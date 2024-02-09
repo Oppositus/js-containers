@@ -1,23 +1,31 @@
 import { PrefixSearchTreeIterator } from './prefix-search-tree-iterator.interface';
 import { PrefixTree } from './prefix-tree.interface';
+import { PrefixSearchTreeConvertor } from './prefix-search-tree-convertor.interface';
 
 interface ArrayTrieNode<T> {
   next: ArrayTrieNode<T>[];
   value?: T;
 }
 
-export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterator<string, T> {
+export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterator<string, T>, PrefixSearchTreeConvertor<string, T> {
 
   private static maxAlphabetLength = 128;
 
   private root: ArrayTrieNode<T> | undefined = undefined;
+  private siz = 0;
+
   private alphabet = new Map<number, number>();
   private reverseAlphabet = new Map<number, string>();
+
   private readonly len: number = 0;
-  private siz = 0;
+
   private readonly arrayTemplate: ArrayTrieNode<T>[];
 
   constructor(alphabet: string) {
+    if (!alphabet) {
+      throw new TypeError('Alphabet must not be empty');
+    }
+
     for (let i = 0, l = alphabet.length; i < l; ++i) {
       const char = alphabet.charAt(i);
       const code = char.charCodeAt(0);
@@ -34,12 +42,13 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
     }
 
     this.arrayTemplate = [];
-    for (let i = 0; i < this.siz; ++i) {
+    for (let i = 0; i < this.len; ++i) {
       this.arrayTemplate.push(null);
     }
   }
 
   //#region Tree implementation
+
   get size(): number {
     return this.siz;
   }
@@ -55,11 +64,12 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
   clear(): number {
     const siz = this.siz;
     this.root = undefined;
+    this.siz = 0;
     return siz;
   }
 
   has(key: string): boolean {
-    return !!this.get(key);
+    return this.get(key) !== undefined;
   }
 
   get(key: string): T | undefined {
@@ -90,6 +100,7 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
   //#endregion
 
   //#region PrefixTree implementation
+
   longestPrefixOf(key: string): string {
     if (!key) {
       throw new TypeError('Key is empty');
@@ -101,6 +112,7 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
   //#endregion
 
   //#region Iterators
+
   keys(): Iterator<string> {
     return this.keysWithPrefix('');
   }
@@ -115,7 +127,8 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
 
   //#endregion
 
-  //#region PrefixIterators
+  //#region Prefix Iterators
+
   entriesWithPrefix(prefix: string): Iterator<[string, T]> {
     return this.mapWithPrefix(prefix).entries();
   }
@@ -124,14 +137,14 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
     return this.mapWithPrefix(prefix).keys();
   }
 
-
   valuesWithPrefix(prefix: string): IterableIterator<T> {
     return this.mapWithPrefix(prefix).values();
   }
 
   //#endregion
 
-  //#region MatchIterators
+  //#region Match Iterators
+
   entriesThatMatch(search: string, wildcard: string = '?'): Iterator<[string, T]> {
     if (wildcard.length !== 1) {
       throw new TypeError('Wildcard length must be 1');
@@ -165,6 +178,7 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
   //#endregion
 
   //#region Array convertors
+
   toArray(): T[] {
     return this.toArrayWithPrefix('');
   }
@@ -186,6 +200,7 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
   //#endregion
 
   //#region Private methods
+
   private createNode(): ArrayTrieNode<T> {
     return {
       next: Array.from<ArrayTrieNode<T>>(this.arrayTemplate)
