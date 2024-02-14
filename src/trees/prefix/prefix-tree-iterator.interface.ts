@@ -1,16 +1,14 @@
 import {
-  EntriesIterator,
   EntriesMatchIterator,
   EntriesPrefixIterator,
-  KeysIterator,
   KeysMatchIterator,
   KeysPrefixIterator,
-  ValuesIterator,
   ValuesMatchIterator,
   ValuesPrefixIterator
 } from '../../interfaces';
+import { TreeMapIterator } from '../tree-map-iterator.interface';
 
-export interface PrefixSearchTreeIterator<K, V> extends KeysIterator<string>, ValuesIterator<V>, EntriesIterator<K, V>,
+export interface PrefixTreeIterator<K, V> extends TreeMapIterator<K, V>,
   KeysPrefixIterator<K>, ValuesPrefixIterator<K, V>, EntriesPrefixIterator<K, V>,
   KeysMatchIterator<K>, ValuesMatchIterator<K, V>, EntriesMatchIterator<K, V> {
 }

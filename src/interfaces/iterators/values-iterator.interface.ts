@@ -1,3 +1,3 @@
 export interface ValuesIterator<V> {
-  values(): Iterator<V>;
+  values(): IterableIterator<V>;
 }

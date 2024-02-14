@@ -1,3 +1,3 @@
 export interface KeysIterator<K> {
-  keys(): Iterator<K>;
+  keys(): IterableIterator<K>;
 }

@@ -1,14 +1,11 @@
-import { PrefixSearchTreeIterator } from './prefix-search-tree-iterator.interface';
-import { PrefixTree } from './prefix-tree.interface';
-import { PrefixSearchTreeConvertor } from './prefix-search-tree-convertor.interface';
+import { PrefixTreeMap } from './prefix-tree-map.interface';
 
 interface ArrayTrieNode<T> {
   next: ArrayTrieNode<T>[];
   value?: T;
 }
 
-export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterator<string, T>, PrefixSearchTreeConvertor<string, T> {
-
+export class TrieMap<T> implements PrefixTreeMap<string, T> {
   private static maxAlphabetLength = 128;
 
   private root: ArrayTrieNode<T> | undefined = undefined;
@@ -16,10 +13,11 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
 
   private alphabet = new Map<number, number>();
   private reverseAlphabet = new Map<number, string>();
-
   private readonly len: number = 0;
 
   private readonly arrayTemplate: ArrayTrieNode<T>[];
+
+  //#region Construction
 
   constructor(alphabet: string) {
     if (!alphabet) {
@@ -47,7 +45,9 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
     }
   }
 
-  //#region Tree implementation
+  //#endregion
+
+  //#region TreeSet implementation
 
   get size(): number {
     return this.siz;
@@ -72,6 +72,19 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
     return this.get(key) !== undefined;
   }
 
+  delete(key: string): boolean {
+    if (!key) {
+      throw new TypeError('Key is empty');
+    }
+    const sizeBefore = this.siz;
+    this.root = this.innerDelete(this.root, key, 0);
+    return this.siz < sizeBefore;
+  }
+
+  //#endregion
+
+  //#region TreeMap implementation
+
   get(key: string): T | undefined {
     if (!key) {
       throw new TypeError('Key is empty');
@@ -86,15 +99,6 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
     }
     this.root = this.innerAdd(this.root, key, 0, value);
     return this.siz;
-  }
-
-  delete(key: string): boolean {
-    if (!key) {
-      throw new TypeError('Key is empty');
-    }
-    const sizeBefore = this.siz;
-    this.root = this.innerDelete(this.root, key, 0);
-    return this.siz < sizeBefore;
   }
 
   //#endregion
@@ -113,15 +117,15 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
 
   //#region Iterators
 
-  keys(): Iterator<string> {
+  keys(): IterableIterator<string> {
     return this.keysWithPrefix('');
   }
 
-  values(): Iterator<T> {
+  values(): IterableIterator<T> {
     return this.valuesWithPrefix('');
   }
 
-  entries(): Iterator<[string, T]> {
+  entries(): IterableIterator<[string, T]> {
     return this.entriesWithPrefix('');
   }
 
@@ -129,11 +133,11 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
 
   //#region Prefix Iterators
 
-  entriesWithPrefix(prefix: string): Iterator<[string, T]> {
+  entriesWithPrefix(prefix: string): IterableIterator<[string, T]> {
     return this.mapWithPrefix(prefix).entries();
   }
 
-  keysWithPrefix(prefix: string): Iterator<string> {
+  keysWithPrefix(prefix: string): IterableIterator<string> {
     return this.mapWithPrefix(prefix).keys();
   }
 
@@ -145,8 +149,8 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
 
   //#region Match Iterators
 
-  entriesThatMatch(search: string, wildcard: string = '?'): Iterator<[string, T]> {
-    if (wildcard.length !== 1) {
+  entriesThatMatch(search: string, wildcard: string = '?'): IterableIterator<[string, T]> {
+    if (!wildcard || wildcard.length !== 1) {
       throw new TypeError('Wildcard length must be 1');
     }
     if (this.alphabet.has(wildcard.charCodeAt(0))) {
@@ -155,8 +159,8 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
     return this.mapThatMatch(search, wildcard).entries();
   }
 
-  keysThatMatch(search: string, wildcard: string = '?'): Iterator<string> {
-    if (wildcard.length !== 1) {
+  keysThatMatch(search: string, wildcard: string = '?'): IterableIterator<string> {
+    if (!wildcard || wildcard.length !== 1) {
       throw new TypeError('Wildcard length must be 1');
     }
     if (this.alphabet.has(wildcard.charCodeAt(0))) {
@@ -166,7 +170,7 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
   }
 
   valuesThatMatch(search: string, wildcard: string = '?'): IterableIterator<T> {
-    if (wildcard.length !== 1) {
+    if (!wildcard || wildcard.length !== 1) {
       throw new TypeError('Wildcard length must be 1');
     }
     if (this.alphabet.has(wildcard.charCodeAt(0))) {
@@ -188,7 +192,7 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
   }
 
   toArrayThatMatch(search: string, wildcard: string = '?'): T[] {
-    if (wildcard.length !== 1) {
+    if (!wildcard || wildcard.length !== 1) {
       throw new TypeError('Wildcard length must be 1');
     }
     if (this.alphabet.has(wildcard.charCodeAt(0))) {
@@ -216,10 +220,10 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
     }
 
     const char = key.charCodeAt(index);
-    if (!this.alphabet.has(char)) {
+    const ci = this.alphabet.get(char);
+    if (ci === undefined) {
       throw new TypeError(`Character ${char} is not in the alphabet`);
     }
-    const ci = this.alphabet.get(char);
     return this.innerGet(node.next[ci], key, index + 1);
   }
 
@@ -234,10 +238,10 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
       node.value = value;
     } else {
       const char = key.charCodeAt(index);
-      if (!this.alphabet.has(char)) {
+      const ci = this.alphabet.get(char);
+      if (ci === undefined) {
         throw new TypeError(`Character ${char} is not in the alphabet`);
       }
-      const ci = this.alphabet.get(char);
       node.next[ci] = this.innerAdd(node.next[ci], key, index + 1, value);
     }
     return node;
@@ -254,10 +258,10 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
       node.value = undefined;
     } else {
       const char = key.charCodeAt(index);
-      if (!this.alphabet.has(char)) {
+      const ci = this.alphabet.get(char);
+      if (ci === undefined) {
         throw new TypeError(`Character ${char} is not in the alphabet`);
       }
-      const ci = this.alphabet.get(char);
       node.next[ci] = this.innerDelete(node.next[ci], key, index + 1);
     }
 
@@ -284,10 +288,10 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
       return length;
     }
     const char = key.charCodeAt(index);
-    if (!this.alphabet.has(char)) {
+    const ci = this.alphabet.get(char);
+    if (ci === undefined) {
       throw new TypeError(`Character ${char} is not in the alphabet`);
     }
-    const ci = this.alphabet.get(char);
     return this.innerPrefix(node.next[ci], key, index + 1, length);
   }
 
@@ -301,10 +305,10 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
     }
 
     const char = prefix.charCodeAt(index);
-    if (!this.alphabet.has(char)) {
+    const ci = this.alphabet.get(char);
+    if (ci === undefined) {
       throw new TypeError(`Character ${char} is not in the alphabet`);
     }
-    const ci = this.alphabet.get(char);
     return this.nodeWithPrefix(node.next[ci], prefix, index + 1);
   }
 
@@ -360,10 +364,10 @@ export class TrieMap<T> implements PrefixTree<string, T>, PrefixSearchTreeIterat
       }
     } else {
       const ch = char.charCodeAt(0);
-      if (!this.alphabet.has(ch)) {
+      const ci = this.alphabet.get(ch);
+      if (ci === undefined) {
         throw new TypeError(`Character ${ch} is not in the alphabet`);
       }
-      const ci = this.alphabet.get(ch);
       this.collectThatMatch(node.next[ci], map, key + this.reverseAlphabet.get(ci), prefix, index + 1, wildcard);
     }
   }

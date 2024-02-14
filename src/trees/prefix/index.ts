@@ -1,5 +1,5 @@
-export * from './prefix-search-tree-iterator.interface';
-export * from './prefix-search-tree-convertor.interface';
-export * from './prefix-tree.interface';
+export * from './prefix-tree-iterator.interface';
+export * from './prefix-tree-convertor.interface';
+export * from './prefix-tree-map.interface';
 export * from './trie-map';
 

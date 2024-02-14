@@ -1,3 +1,3 @@
 export interface EntriesIterator<K, V> {
-  entries(): Iterator<[K, V]>;
+  entries(): IterableIterator<[K, V]>;
 }

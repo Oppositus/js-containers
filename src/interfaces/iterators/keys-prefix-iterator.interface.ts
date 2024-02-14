@@ -1,3 +1,3 @@
 export interface KeysPrefixIterator<K> {
-  keysWithPrefix(prefix: K | K[]): Iterator<K>;
+  keysWithPrefix(prefix: K | K[]): IterableIterator<K>;
 }
