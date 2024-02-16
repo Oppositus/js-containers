@@ -6,6 +6,13 @@ interface ArrayTrieSetNode {
   useCount: number;
 }
 
+interface IteratorState {
+  prevState: IteratorState | null;
+  node: ArrayTrieSetNode;
+  index: number;
+  key: string;
+}
+
 export class TrieSet implements PrefixTreeSet<string> {
   private static maxAlphabetLength = 128;
 
@@ -17,6 +24,8 @@ export class TrieSet implements PrefixTreeSet<string> {
   private readonly len: number = 0;
 
   private readonly arrayTemplate: ArrayTrieSetNode[];
+
+  private iteratorState: IteratorState = null;
 
   //#region Construction
 
@@ -118,7 +127,32 @@ export class TrieSet implements PrefixTreeSet<string> {
   //#region Prefix Iterators
 
   keysWithPrefix(prefix: string): IterableIterator<string> {
-    return this.setWithPrefix(prefix).keys();
+    const start = this.nodeWithPrefix(this.root, prefix, 0);
+
+    this.iteratorState = {
+      prevState: null,
+      node: start,
+      index: -1,
+      key: prefix
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const that = this;
+
+    return {
+      [Symbol.iterator]() {
+        return this;
+      },
+
+      next(): IteratorResult<string, string> {
+        const key = that.findNextKey();
+
+        return {
+          value: key,
+          done: !key
+        }
+      }
+    };
   }
 
   //#endregion
@@ -170,19 +204,20 @@ export class TrieSet implements PrefixTreeSet<string> {
   }
 
   private innerHas(node: ArrayTrieSetNode, key: string, index: number): boolean {
-    if (!node) {
-      return false;
-    }
-    if (index === key.length) {
-      return true;
+    while (node) {
+      if (index === key.length) {
+        return node.isString;
+      }
+
+      const char = key.charCodeAt(index++);
+      const ci = this.alphabet.get(char);
+      if (ci === undefined) {
+        throw new TypeError(`Character ${char} is not in the alphabet`);
+      }
+      node = node.next[ci];
     }
 
-    const char = key.charCodeAt(index);
-    const ci = this.alphabet.get(char);
-    if (ci === undefined) {
-      throw new TypeError(`Character ${char} is not in the alphabet`);
-    }
-    return this.innerHas(node.next[ci], key, index + 1);
+    return false;
   }
 
   private innerAdd(node: ArrayTrieSetNode, key: string, index: number): ArrayTrieSetNode {
@@ -272,35 +307,10 @@ export class TrieSet implements PrefixTreeSet<string> {
     return this.nodeWithPrefix(node.next[ci], prefix, index + 1);
   }
 
-  private setWithPrefix(prefix: string): Set<string> {
-    const set = new Set<string>();
-    const start = this.nodeWithPrefix(this.root, prefix, 0);
-    if (start) {
-      this.collect(start, set, prefix);
-    }
-    return set;
-  }
-
   private setThatMatch(prefix: string, wildcard: string): Set<string> {
     const set = new Set<string>();
     this.collectThatMatch(this.root, set, '', prefix, 0, wildcard);
     return set;
-  }
-
-  private collect(node: ArrayTrieSetNode, set: Set<string>, key: string): void {
-    if (!node) {
-      return;
-    }
-
-    if (node.isString) {
-      set.add(key);
-    }
-
-    for (let i = 0; i < this.len; ++i) {
-      if (node.next[i] !== null) {
-        this.collect(node.next[i], set, key + this.reverseAlphabet.get(i));
-      }
-    }
   }
 
   private collectThatMatch(node: ArrayTrieSetNode, set: Set<string>, key: string, prefix: string, index: number, wildcard: string): void {
@@ -330,6 +340,42 @@ export class TrieSet implements PrefixTreeSet<string> {
       }
       this.collectThatMatch(node.next[ci], set, key + this.reverseAlphabet.get(ci), prefix, index + 1, wildcard);
     }
+  }
+
+  private findNextKey(): string | undefined {
+    const state = this.iteratorState;
+
+    if (!state) {
+      return undefined;
+    }
+
+    if (!state.node) {
+      this.iteratorState = state.prevState;
+      return this.findNextKey();
+    }
+
+    if (state.index < 0) {
+      state.index = 0;
+      if (state.node.isString) {
+        return state.key;
+      }
+    }
+
+    for (let i = state.index; i < this.len; ++i) {
+      if (state.node.next[i]) {
+        state.index = i + 1;
+        this.iteratorState = {
+          prevState: state,
+          node: state.node.next[i],
+          index: -1,
+          key: state.key + this.reverseAlphabet.get(i)
+        }
+        return this.findNextKey();
+      }
+    }
+
+    this.iteratorState = state.prevState;
+    return this.findNextKey();
   }
 
   //#endregion
