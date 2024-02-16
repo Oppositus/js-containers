@@ -215,19 +215,20 @@ export class TrieMap<T> implements PrefixTreeMap<string, T> {
   }
 
   private innerGet(node: ArrayTrieMapNode<T>, key: string, index: number): ArrayTrieMapNode<T> | null {
-    if (!node) {
-      return null;
-    }
-    if (index === key.length) {
-      return node;
+    while (node) {
+      if (index === key.length) {
+        return node;
+      }
+
+      const char = key.charCodeAt(index++);
+      const ci = this.alphabet.get(char);
+      if (ci === undefined) {
+        throw new TypeError(`Character ${char} is not in the alphabet`);
+      }
+      node = node.next[ci];
     }
 
-    const char = key.charCodeAt(index);
-    const ci = this.alphabet.get(char);
-    if (ci === undefined) {
-      throw new TypeError(`Character ${char} is not in the alphabet`);
-    }
-    return this.innerGet(node.next[ci], key, index + 1);
+    return null;
   }
 
   private innerAdd(node: ArrayTrieMapNode<T>, key: string, index: number, value: T): ArrayTrieMapNode<T> {
