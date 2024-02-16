@@ -6,6 +6,13 @@ interface ArrayTrieMapNode<T> {
   useCount: number;
 }
 
+interface IteratorState<T> {
+  prevState: IteratorState<T> | null;
+  node: ArrayTrieMapNode<T>;
+  index: number;
+  key: string;
+}
+
 export class TrieMap<T> implements PrefixTreeMap<string, T> {
   private static maxAlphabetLength = 128;
 
@@ -17,6 +24,8 @@ export class TrieMap<T> implements PrefixTreeMap<string, T> {
   private readonly len: number = 0;
 
   private readonly arrayTemplate: ArrayTrieMapNode<T>[];
+
+  private iteratorState: IteratorState<T> = null;
 
   //#region Construction
 
@@ -135,15 +144,92 @@ export class TrieMap<T> implements PrefixTreeMap<string, T> {
   //#region Prefix Iterators
 
   entriesWithPrefix(prefix: string): IterableIterator<[string, T]> {
-    return this.mapWithPrefix(prefix).entries();
+    const start = this.nodeWithPrefix(this.root, prefix, 0);
+
+    this.iteratorState = {
+      prevState: null,
+      node: start,
+      index: -1,
+      key: prefix
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const that = this;
+
+    return {
+      [Symbol.iterator]() {
+        return this;
+      },
+
+      next(): IteratorResult<[string, T], [string, T]> {
+        const [key, value] = that.findNextNode();
+
+        return {
+          value: value ? [key, value] : undefined,
+          done: !key
+        }
+      }
+    };
+
   }
 
   keysWithPrefix(prefix: string): IterableIterator<string> {
-    return this.mapWithPrefix(prefix).keys();
+    const start = this.nodeWithPrefix(this.root, prefix, 0);
+
+    this.iteratorState = {
+      prevState: null,
+      node: start,
+      index: -1,
+      key: prefix
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const that = this;
+
+    return {
+      [Symbol.iterator]() {
+        return this;
+      },
+
+      next(): IteratorResult<string, string> {
+        const [key] = that.findNextNode();
+
+        return {
+          value: key,
+          done: !key
+        }
+      }
+    };
   }
 
   valuesWithPrefix(prefix: string): IterableIterator<T> {
-    return this.mapWithPrefix(prefix).values();
+    const start = this.nodeWithPrefix(this.root, prefix, 0);
+
+    this.iteratorState = {
+      prevState: null,
+      node: start,
+      index: -1,
+      key: prefix
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const that = this;
+
+    return {
+      [Symbol.iterator]() {
+        return this;
+      },
+
+      next(): IteratorResult<T, T> {
+        const [, value] = that.findNextNode();
+
+        return {
+          value: value,
+          done: value === undefined
+        }
+      }
+    };
+
   }
 
   //#endregion
@@ -318,35 +404,10 @@ export class TrieMap<T> implements PrefixTreeMap<string, T> {
     return this.nodeWithPrefix(node.next[ci], prefix, index + 1);
   }
 
-  private mapWithPrefix(prefix: string): Map<string, T> {
-    const map = new Map<string, T>();
-    const start = this.nodeWithPrefix(this.root, prefix, 0);
-    if (start) {
-      this.collect(start, map, prefix);
-    }
-    return map;
-  }
-
   private mapThatMatch(prefix: string, wildcard: string): Map<string, T> {
     const map = new Map<string, T>();
     this.collectThatMatch(this.root, map, '', prefix, 0, wildcard);
     return map;
-  }
-
-  private collect(node: ArrayTrieMapNode<T>, map: Map<string, T>, key: string): void {
-    if (!node) {
-      return;
-    }
-
-    if (node.value !== undefined) {
-      map.set(key, node.value);
-    }
-
-    for (let i = 0; i < this.len; ++i) {
-      if (node.next[i] !== null) {
-        this.collect(node.next[i], map, key + this.reverseAlphabet.get(i));
-      }
-    }
   }
 
   private collectThatMatch(node: ArrayTrieMapNode<T>, map: Map<string, T>, key: string, prefix: string, index: number, wildcard: string): void {
@@ -376,6 +437,42 @@ export class TrieMap<T> implements PrefixTreeMap<string, T> {
       }
       this.collectThatMatch(node.next[ci], map, key + this.reverseAlphabet.get(ci), prefix, index + 1, wildcard);
     }
+  }
+
+  private findNextNode(): [string | undefined, T | undefined] {
+    const state = this.iteratorState;
+
+    if (!state) {
+      return [undefined, undefined];
+    }
+
+    if (!state.node) {
+      this.iteratorState = state.prevState;
+      return this.findNextNode();
+    }
+
+    if (state.index < 0) {
+      state.index = 0;
+      if (state.node.value !== undefined) {
+        return [state.key, state.node.value];
+      }
+    }
+
+    for (let i = state.index; i < this.len; ++i) {
+      if (state.node.next[i]) {
+        state.index = i + 1;
+        this.iteratorState = {
+          prevState: state,
+          node: state.node.next[i],
+          index: -1,
+          key: state.key + this.reverseAlphabet.get(i)
+        }
+        return this.findNextNode();
+      }
+    }
+
+    this.iteratorState = state.prevState;
+    return this.findNextNode();
   }
 
   //#endregion
