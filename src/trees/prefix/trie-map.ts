@@ -3,6 +3,7 @@ import { PrefixTreeMap } from './prefix-tree-map.interface';
 interface ArrayTrieMapNode<T> {
   next: ArrayTrieMapNode<T>[];
   value?: T;
+  useCount: number;
 }
 
 export class TrieMap<T> implements PrefixTreeMap<string, T> {
@@ -207,7 +208,9 @@ export class TrieMap<T> implements PrefixTreeMap<string, T> {
 
   private createNode(): ArrayTrieMapNode<T> {
     return {
-      next: Array.from<ArrayTrieMapNode<T>>(this.arrayTemplate)
+      next: this.arrayTemplate.slice(),
+      value: undefined,
+      useCount: 0
     };
   }
 
@@ -242,6 +245,9 @@ export class TrieMap<T> implements PrefixTreeMap<string, T> {
       if (ci === undefined) {
         throw new TypeError(`Character ${char} is not in the alphabet`);
       }
+      if (!node.next[ci]) {
+        node.useCount += 1;
+      }
       node.next[ci] = this.innerAdd(node.next[ci], key, index + 1, value);
     }
     return node;
@@ -262,17 +268,16 @@ export class TrieMap<T> implements PrefixTreeMap<string, T> {
       if (ci === undefined) {
         throw new TypeError(`Character ${char} is not in the alphabet`);
       }
+      const isFilled = !!node.next[ci];
       node.next[ci] = this.innerDelete(node.next[ci], key, index + 1);
+      if (isFilled && !node.next[ci]) {
+        node.useCount -= 1;
+      }
     }
 
     // Remove sub-trie rooted at x if it is completely empty
-    if (node.value !== undefined) {
+    if (node.value !== undefined || node.useCount > 0) {
       return node;
-    }
-
-    for (let i = 0; i < this.len; ++i) {
-      if (node.next[i] !== null)
-        return node;
     }
     return null;
   }

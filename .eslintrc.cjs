@@ -6,4 +6,12 @@ module.exports = {
     root: true,
     // ignorePatterns: ["src/**/*.test.ts", "dist/**"]
     ignorePatterns: ["dist/**"]
-};
+    /* overrides: [{
+        files: ["*.ts", "*.tsx", "*.js", "*.jsx"],
+        rules: {
+            "no-var": "off"
+        }
+    }] */
+
+}
+

@@ -3,6 +3,7 @@ import { PrefixTreeSet } from './prefix-tree-set.interface';
 interface ArrayTrieSetNode {
   next: ArrayTrieSetNode[];
   isString: boolean;
+  useCount: number;
 }
 
 export class TrieSet implements PrefixTreeSet<string> {
@@ -162,8 +163,9 @@ export class TrieSet implements PrefixTreeSet<string> {
 
   private createNode(): ArrayTrieSetNode {
     return {
-      next: Array.from<ArrayTrieSetNode>(this.arrayTemplate),
-      isString: false
+      next: this.arrayTemplate.slice(),
+      isString: false,
+      useCount: 0
     };
   }
 
@@ -198,6 +200,9 @@ export class TrieSet implements PrefixTreeSet<string> {
       if (ci === undefined) {
         throw new TypeError(`Character ${char} is not in the alphabet`);
       }
+      if (!node.next[ci]) {
+        node.useCount += 1;
+      }
       node.next[ci] = this.innerAdd(node.next[ci], key, index + 1);
     }
     return node;
@@ -218,17 +223,16 @@ export class TrieSet implements PrefixTreeSet<string> {
       if (ci === undefined) {
         throw new TypeError(`Character ${char} is not in the alphabet`);
       }
+      const isFilled = !!node.next[ci];
       node.next[ci] = this.innerDelete(node.next[ci], key, index + 1);
+      if (isFilled && !node.next[ci]) {
+        node.useCount -= 1;
+      }
     }
 
     // Remove sub-trie rooted at x if it is completely empty
-    if (node.isString) {
+    if (node.isString || node.useCount > 0) {
       return node;
-    }
-
-    for (let i = 0; i < this.len; ++i) {
-      if (node.next[i] !== null)
-        return node;
     }
     return null;
   }
