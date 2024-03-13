@@ -1,6 +1,7 @@
 import { TreeSetIterator } from './tree-set-iterator.interface';
+import { TreeSetConvertor } from './tree-set-convertor.interface';
 
-export interface TreeSet<K> extends TreeSetIterator<K> {
+export interface TreeSet<K> extends TreeSetIterator<K>, TreeSetConvertor<K> {
   size: number;
   empty: boolean;
 
