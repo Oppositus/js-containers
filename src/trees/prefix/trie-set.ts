@@ -11,6 +11,8 @@ interface IteratorState {
   node: ArrayTrieSetNode;
   index: number;
   key: string;
+  search: string;
+  wildcard: string;
 }
 
 export class TrieSet implements PrefixTreeSet<string> {
@@ -133,7 +135,9 @@ export class TrieSet implements PrefixTreeSet<string> {
       prevState: null,
       node: start,
       index: -1,
-      key: prefix
+      key: prefix,
+      search: '',
+      wildcard: ''
     }
 
     // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -160,13 +164,34 @@ export class TrieSet implements PrefixTreeSet<string> {
   //#region Match Iterators
 
   keysThatMatch(search: string, wildcard: string = '?'): IterableIterator<string> {
-    if (!wildcard || wildcard.length !== 1) {
-      throw new TypeError('Wildcard length must be 1');
+    this.checkSearch(search, wildcard);
+
+    this.iteratorState = {
+      prevState: null,
+      node: this.root,
+      index: 0,
+      key: '',
+      search,
+      wildcard
     }
-    if (this.alphabet.has(wildcard.charCodeAt(0))) {
-      throw new TypeError('Alphabet must not include wildcard');
-    }
-    return this.setThatMatch(search, wildcard).keys();
+
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const that = this;
+
+    return {
+      [Symbol.iterator]() {
+        return this;
+      },
+
+      next(): IteratorResult<string, string> {
+        const key = that.findNextMatch();
+
+        return {
+          value: key,
+          done: !key
+        }
+      }
+    };
   }
 
   //#endregion
@@ -307,41 +332,6 @@ export class TrieSet implements PrefixTreeSet<string> {
     return this.nodeWithPrefix(node.next[ci], prefix, index + 1);
   }
 
-  private setThatMatch(prefix: string, wildcard: string): Set<string> {
-    const set = new Set<string>();
-    this.collectThatMatch(this.root, set, '', prefix, 0, wildcard);
-    return set;
-  }
-
-  private collectThatMatch(node: ArrayTrieSetNode, set: Set<string>, key: string, prefix: string, index: number, wildcard: string): void {
-    if (!node) {
-      return;
-    }
-
-    if (index === prefix.length) {
-      if (node.isString) {
-        set.add(key);
-      }
-      return;
-    }
-
-    const char = prefix.charAt(index);
-    if (char === wildcard) {
-      for (let i = 0; i < this.len; ++i) {
-        if (node.next[i] !== null) {
-          this.collectThatMatch(node.next[i], set, key + this.reverseAlphabet.get(i), prefix, index + 1, wildcard);
-        }
-      }
-    } else {
-      const ch = char.charCodeAt(0);
-      const ci = this.alphabet.get(ch);
-      if (ci === undefined) {
-        throw new TypeError(`Character ${ch} is not in the alphabet`);
-      }
-      this.collectThatMatch(node.next[ci], set, key + this.reverseAlphabet.get(ci), prefix, index + 1, wildcard);
-    }
-  }
-
   private findNextKey(): string | undefined {
     const state = this.iteratorState;
 
@@ -368,7 +358,9 @@ export class TrieSet implements PrefixTreeSet<string> {
           prevState: state,
           node: state.node.next[i],
           index: -1,
-          key: state.key + this.reverseAlphabet.get(i)
+          key: state.key + this.reverseAlphabet.get(i),
+          search: '',
+          wildcard: ''
         }
         return this.findNextKey();
       }
@@ -376,6 +368,79 @@ export class TrieSet implements PrefixTreeSet<string> {
 
     this.iteratorState = state.prevState;
     return this.findNextKey();
+  }
+
+  private findNextMatch(): string | undefined {
+    // Reqursive function exceeds stack limit for large tries and keys with many wildcards
+
+    let state = this.iteratorState;
+
+    while (state) {
+      if (!state.node) {
+        state = this.iteratorState = state.prevState;
+        continue;
+      }
+
+      if (state.search.length === 0) {
+        const isString = state.node.isString;
+        const key = state.key;
+        state = this.iteratorState = state.prevState;
+        if (isString) {
+          return key;
+        } else {
+          continue;
+        }
+      }
+
+      const char = state.search.charAt(0);
+      if (char === state.wildcard) {
+        let isContinue = false;
+        for (let i = state.index; i < this.len; ++i) {
+          if (state.node.next[i]) {
+            state.index = i + 1;
+            state = this.iteratorState = {
+              prevState: state,
+              node: state.node.next[i],
+              index: 0,
+              key: state.key + this.reverseAlphabet.get(i),
+              search: state.search.substring(1),
+              wildcard: state.wildcard
+            };
+            isContinue = true;
+            break;
+          }
+        }
+        if (!isContinue) {
+          state = this.iteratorState = state.prevState;
+        }
+      } else {
+        const ci = this.alphabet.get(char.charCodeAt(0)); // Alphabet is checked in iterator
+        state.node = state.node.next[ci];
+        state.key += char;
+        state.search = state.search.substring(1);
+      }
+    }
+
+    return undefined;
+  }
+
+  private checkSearch(search: string, wildcard: string): void {
+    if (!wildcard || wildcard.length !== 1) {
+      throw new TypeError('Wildcard length must be 1');
+    }
+    if (this.alphabet.has(wildcard.charCodeAt(0))) {
+      throw new TypeError('Alphabet must not include wildcard');
+    }
+    for (let i = 0; i < search.length; ++i) {
+      const char = search.charAt(i);
+      if (char === wildcard) {
+        continue;
+      }
+      const code = search.charCodeAt(i);
+      if (!this.alphabet.has(code)) {
+        throw new TypeError(`Character ${code} is not in the alphabet`);
+      }
+    }
   }
 
   //#endregion

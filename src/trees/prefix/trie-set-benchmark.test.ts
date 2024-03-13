@@ -783,12 +783,6 @@ describe('Benchmark TrieSet vs Set', () => {
         let count = 0;
         for (const k of t.keysWithPrefix(prefix)) {
           count += 1;
-
-          if (!k.startsWith(prefix)) {
-            console.log('WRONG', k, prefix);
-            fail();
-            throw new Error('WRONG');
-          }
         }
       };
 
@@ -907,6 +901,188 @@ describe('Benchmark TrieSet vs Set', () => {
     });
 
     it('Keys with prefix benchmark - key size 12-20 (rus)', () => {
+      const MIN_KEY_LENGTH = 12;
+      const MAX_KEY_LENGTH = 20;
+
+      doTest(
+        new TrieSet(rus),
+        new Set<string>(),
+        MIN_KEY_LENGTH,
+        MAX_KEY_LENGTH,
+        rus
+      );
+    });
+
+  });
+
+  describe('Benchmark Keys that match', () => {
+    const KEYS_SIZE = 50000;
+    const MATCH_SIZE = 25000;
+
+    const prepareKey = (key: string): string => {
+      let k = '';
+      for (let i = 0; i < key.length; ++i) {
+        if (Math.random() < 0.3) {
+          k += '.';
+        } else {
+          k += key.charAt(i);
+        }
+      }
+      return k;
+    }
+
+    const setupTest = (min: number, max: number, result: string[], match: string[], alphabet: string): void => {
+      for (let i = 0; i < KEYS_SIZE; ++i) {
+        const len = min + Math.ceil(Math.random() * (max - min));
+        let str = '';
+        for (let j = 0; j < len; ++j) {
+          str += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+        }
+        result.push(str);
+      }
+
+      for (let i = 0; i < MATCH_SIZE; ++i) {
+        const k = result[Math.floor(Math.random() * KEYS_SIZE)];
+        match.push(prepareKey(k));
+      }
+
+    };
+
+    const prepare = (t: TrieSet, s: Set<string>, keys: string[]): void => {
+      for (let i = 0; i < KEYS_SIZE; ++i) {
+        const k = keys[Math.floor(Math.random() * keys.length)];
+        t.add(k);
+        s.add(k);
+      }
+    }
+
+    const doTest = (trie: TrieSet, set: Set<string>, min: number, max: number, alphabet: string): void => {
+      const keys: string[] = [];
+      const matches: string[] = [];
+
+      const keysTrie = (t: TrieSet, ks: string[]) => {
+        const key = ks[Math.floor(Math.random() * ks.length)];
+
+        let count = 0;
+        for (const k of t.keysThatMatch(key, '.')) {
+          count += 1;
+        }
+      };
+
+      const keysSet = (s: Set<string>, ks: string[]) => {
+        const key = ks[Math.floor(Math.random() * ks.length)];
+
+        let count = 0;
+        for (const k of s.keys()) {
+          if (k.match(key)) {
+            count += 1;
+          }
+        }
+      };
+
+      setupTest(min, max, keys, matches, alphabet);
+      prepare(trie, set, keys);
+
+      let statTrie: Stats;
+      const benchTrieSet = new Benchmark('Test 1', {
+        onCycle: () => {
+          trie.clear();
+          set.clear();
+          prepare(trie, set, keys);
+        },
+        onComplete: (event: Event) => statTrie = event.target.stats,
+        fn: keysTrie.bind(null, trie, matches),
+        minSamples: 50
+      });
+      benchTrieSet.run();
+
+      let statSet: Stats;
+      const benchSet = new Benchmark('Test 1', {
+        onCycle: () => {
+          trie.clear();
+          set.clear();
+          prepare(trie, set, keys);
+        },
+        onComplete: (event: Event) => statSet = event.target.stats,
+        fn: keysSet.bind(null, set, matches),
+        minSamples: 50
+      });
+      benchSet.run();
+
+      console.log(
+        `=== Key Size: ${min} - ${max}. ${alphabet}\n`,
+        'Mean Set/Trie:     ', statSet.mean / statTrie.mean, '\n',
+        'Deviation Set/Trie:', statSet.deviation / statTrie.deviation, '\n',
+        'Variance Set/Trie: ', statSet.variance / statTrie.variance
+      );
+    };
+
+    it('Keys that match benchmark - key size 3-7 (eng)', () => {
+      const MIN_KEY_LENGTH = 3;
+      const MAX_KEY_LENGTH = 7;
+
+      doTest(
+        new TrieSet(eng),
+        new Set<string>(),
+        MIN_KEY_LENGTH,
+        MAX_KEY_LENGTH,
+        eng
+      );
+    });
+
+    it('Keys that match benchmark - key size 3-7 (rus)', () => {
+      const MIN_KEY_LENGTH = 3;
+      const MAX_KEY_LENGTH = 7;
+
+      doTest(
+        new TrieSet(rus),
+        new Set<string>(),
+        MIN_KEY_LENGTH,
+        MAX_KEY_LENGTH,
+        rus
+      );
+    });
+
+    it('Keys that match benchmark - key size 7-12 (eng)', () => {
+      const MIN_KEY_LENGTH = 7;
+      const MAX_KEY_LENGTH = 12;
+
+      doTest(
+        new TrieSet(eng),
+        new Set<string>(),
+        MIN_KEY_LENGTH,
+        MAX_KEY_LENGTH,
+        eng
+      );
+    });
+
+    it('Keys that match benchmark - key size 7-12 (rus)', () => {
+      const MIN_KEY_LENGTH = 7;
+      const MAX_KEY_LENGTH = 12;
+
+      doTest(
+        new TrieSet(rus),
+        new Set<string>(),
+        MIN_KEY_LENGTH,
+        MAX_KEY_LENGTH,
+        rus
+      );
+    });
+
+    it('Keys that match benchmark - key size 12-20 (eng)', () => {
+      const MIN_KEY_LENGTH = 12;
+      const MAX_KEY_LENGTH = 20;
+
+      doTest(
+        new TrieSet(eng),
+        new Set<string>(),
+        MIN_KEY_LENGTH,
+        MAX_KEY_LENGTH,
+        eng
+      );
+    });
+
+    it('Keys that match benchmark - key size 12-20 (rus)', () => {
       const MIN_KEY_LENGTH = 12;
       const MAX_KEY_LENGTH = 20;
 

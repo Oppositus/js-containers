@@ -11,6 +11,8 @@ interface IteratorState<T> {
   node: ArrayTrieMapNode<T>;
   index: number;
   key: string;
+  search: string;
+  wildcard: string;
 }
 
 export class TrieMap<T> implements PrefixTreeMap<string, T> {
@@ -150,7 +152,9 @@ export class TrieMap<T> implements PrefixTreeMap<string, T> {
       prevState: null,
       node: start,
       index: -1,
-      key: prefix
+      key: prefix,
+      search: '',
+      wildcard: ''
     }
 
     // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -165,7 +169,7 @@ export class TrieMap<T> implements PrefixTreeMap<string, T> {
         const [key, value] = that.findNextNode();
 
         return {
-          value: value ? [key, value] : undefined,
+          value: key ? [key, value] : undefined,
           done: !key
         }
       }
@@ -180,7 +184,9 @@ export class TrieMap<T> implements PrefixTreeMap<string, T> {
       prevState: null,
       node: start,
       index: -1,
-      key: prefix
+      key: prefix,
+      search: '',
+      wildcard: ''
     }
 
     // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -209,7 +215,9 @@ export class TrieMap<T> implements PrefixTreeMap<string, T> {
       prevState: null,
       node: start,
       index: -1,
-      key: prefix
+      key: prefix,
+      search: '',
+      wildcard: ''
     }
 
     // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -237,33 +245,96 @@ export class TrieMap<T> implements PrefixTreeMap<string, T> {
   //#region Match Iterators
 
   entriesThatMatch(search: string, wildcard: string = '?'): IterableIterator<[string, T]> {
-    if (!wildcard || wildcard.length !== 1) {
-      throw new TypeError('Wildcard length must be 1');
+    this.checkSearch(search, wildcard);
+
+    this.iteratorState = {
+      prevState: null,
+      node: this.root,
+      index: 0,
+      key: '',
+      search,
+      wildcard
     }
-    if (this.alphabet.has(wildcard.charCodeAt(0))) {
-      throw new TypeError('Alphabet must not include wildcard');
-    }
-    return this.mapThatMatch(search, wildcard).entries();
+
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const that = this;
+
+    return {
+      [Symbol.iterator]() {
+        return this;
+      },
+
+      next(): IteratorResult<[string, T], [string, T]> {
+        const [key, value] = that.findNextMatch();
+
+        return {
+          value: key ? [key, value] : undefined,
+          done: !key
+        }
+      }
+    };
   }
 
   keysThatMatch(search: string, wildcard: string = '?'): IterableIterator<string> {
-    if (!wildcard || wildcard.length !== 1) {
-      throw new TypeError('Wildcard length must be 1');
+    this.checkSearch(search, wildcard);
+
+    this.iteratorState = {
+      prevState: null,
+      node: this.root,
+      index: 0,
+      key: '',
+      search,
+      wildcard
     }
-    if (this.alphabet.has(wildcard.charCodeAt(0))) {
-      throw new TypeError('Alphabet must not include wildcard');
-    }
-    return this.mapThatMatch(search, wildcard).keys();
+
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const that = this;
+
+    return {
+      [Symbol.iterator]() {
+        return this;
+      },
+
+      next(): IteratorResult<string, string> {
+        const [key] = that.findNextMatch();
+
+        return {
+          value: key,
+          done: !key
+        }
+      }
+    };
   }
 
   valuesThatMatch(search: string, wildcard: string = '?'): IterableIterator<T> {
-    if (!wildcard || wildcard.length !== 1) {
-      throw new TypeError('Wildcard length must be 1');
+    this.checkSearch(search, wildcard);
+
+    this.iteratorState = {
+      prevState: null,
+      node: this.root,
+      index: 0,
+      key: '',
+      search,
+      wildcard
     }
-    if (this.alphabet.has(wildcard.charCodeAt(0))) {
-      throw new TypeError('Alphabet must not include wildcard');
-    }
-    return this.mapThatMatch(search, wildcard).values();
+
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const that = this;
+
+    return {
+      [Symbol.iterator]() {
+        return this;
+      },
+
+      next(): IteratorResult<T, T> {
+        const [, value] = that.findNextMatch();
+
+        return {
+          value: value,
+          done: value === undefined
+        }
+      }
+    };
   }
 
   //#endregion
@@ -404,41 +475,6 @@ export class TrieMap<T> implements PrefixTreeMap<string, T> {
     return this.nodeWithPrefix(node.next[ci], prefix, index + 1);
   }
 
-  private mapThatMatch(prefix: string, wildcard: string): Map<string, T> {
-    const map = new Map<string, T>();
-    this.collectThatMatch(this.root, map, '', prefix, 0, wildcard);
-    return map;
-  }
-
-  private collectThatMatch(node: ArrayTrieMapNode<T>, map: Map<string, T>, key: string, prefix: string, index: number, wildcard: string): void {
-    if (!node) {
-      return;
-    }
-
-    if (index === prefix.length) {
-      if (node.value !== undefined) {
-        map.set(key, node.value);
-      }
-      return;
-    }
-
-    const char = prefix.charAt(index);
-    if (char === wildcard) {
-      for (let i = 0; i < this.len; ++i) {
-        if (node.next[i] !== null) {
-          this.collectThatMatch(node.next[i], map, key + this.reverseAlphabet.get(i), prefix, index + 1, wildcard);
-        }
-      }
-    } else {
-      const ch = char.charCodeAt(0);
-      const ci = this.alphabet.get(ch);
-      if (ci === undefined) {
-        throw new TypeError(`Character ${ch} is not in the alphabet`);
-      }
-      this.collectThatMatch(node.next[ci], map, key + this.reverseAlphabet.get(ci), prefix, index + 1, wildcard);
-    }
-  }
-
   private findNextNode(): [string | undefined, T | undefined] {
     const state = this.iteratorState;
 
@@ -465,7 +501,9 @@ export class TrieMap<T> implements PrefixTreeMap<string, T> {
           prevState: state,
           node: state.node.next[i],
           index: -1,
-          key: state.key + this.reverseAlphabet.get(i)
+          key: state.key + this.reverseAlphabet.get(i),
+          search: '',
+          wildcard: ''
         }
         return this.findNextNode();
       }
@@ -473,6 +511,79 @@ export class TrieMap<T> implements PrefixTreeMap<string, T> {
 
     this.iteratorState = state.prevState;
     return this.findNextNode();
+  }
+
+  private findNextMatch(): [string | undefined, T | undefined] {
+    // Reqursive function exceeds stack limit for large tries and keys with many wildcards
+
+    let state = this.iteratorState;
+
+    while (state) {
+      if (!state.node) {
+        state = this.iteratorState = state.prevState;
+        continue;
+      }
+
+      if (state.search.length === 0) {
+        const value = state.node.value;
+        const key = state.key;
+        state = this.iteratorState = state.prevState;
+        if (value !== undefined) {
+          return [key, value];
+        } else {
+          continue;
+        }
+      }
+
+      const char = state.search.charAt(0);
+      if (char === state.wildcard) {
+        let isContinue = false;
+        for (let i = state.index; i < this.len; ++i) {
+          if (state.node.next[i]) {
+            state.index = i + 1;
+            state = this.iteratorState = {
+              prevState: state,
+              node: state.node.next[i],
+              index: 0,
+              key: state.key + this.reverseAlphabet.get(i),
+              search: state.search.substring(1),
+              wildcard: state.wildcard
+            };
+            isContinue = true;
+            break;
+          }
+        }
+        if (!isContinue) {
+          state = this.iteratorState = state.prevState;
+        }
+      } else {
+        const ci = this.alphabet.get(char.charCodeAt(0)); // Alphabet is checked in iterator
+        state.node = state.node.next[ci];
+        state.key += char;
+        state.search = state.search.substring(1);
+      }
+    }
+
+    return [undefined, undefined];
+  }
+
+  private checkSearch(search: string, wildcard: string): void {
+    if (!wildcard || wildcard.length !== 1) {
+      throw new TypeError('Wildcard length must be 1');
+    }
+    if (this.alphabet.has(wildcard.charCodeAt(0))) {
+      throw new TypeError('Alphabet must not include wildcard');
+    }
+    for (let i = 0; i < search.length; ++i) {
+      const char = search.charAt(i);
+      if (char === wildcard) {
+        continue;
+      }
+      const code = search.charCodeAt(i);
+      if (!this.alphabet.has(code)) {
+        throw new TypeError(`Character ${code} is not in the alphabet`);
+      }
+    }
   }
 
   //#endregion

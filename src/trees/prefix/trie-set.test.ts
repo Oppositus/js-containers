@@ -481,7 +481,7 @@ describe('TrieSet', () => {
     describe('Simple iterators', () => {
       describe('Keys iterator', () => {
         it('Should return empty keys iterator for empty trie', () => {
-          const t = new TrieSet('eng');
+          const t = new TrieSet(eng);
           const keys = t.keys();
           const next = keys.next();
 
@@ -532,7 +532,7 @@ describe('TrieSet', () => {
   describe('Prefix iterators', () => {
     describe('KeysWithPrefix iterator', () => {
       it('Should return empty keys iterator for empty trie', () => {
-        const t = new TrieSet('eng');
+        const t = new TrieSet(eng);
         const keys = t.keysWithPrefix('a');
         const next = keys.next();
 
@@ -594,7 +594,7 @@ describe('TrieSet', () => {
   describe('Match iterators', () => {
     describe('KeysThatMatch iterator', () => {
       it('Should return empty keys iterator for empty trie', () => {
-        const t = new TrieSet('eng');
+        const t = new TrieSet(eng);
         const keys1 = t.keysThatMatch('a');
         const next1 = keys1.next();
 
@@ -698,6 +698,22 @@ describe('TrieSet', () => {
           count += 1;
         }
         expect(count).toBe(2);
+      });
+
+      it('Should return all keys (1 key) - 5', () => {
+        const t = new TrieSet(eng);
+
+        t.add('abcd');
+        t.add('zbcda');
+        t.add('zbcdb');
+
+        const arr = ['abcd'];
+        let count = 0;
+        for (const k of t.keysThatMatch('?bcd')) {
+          expect(arr.indexOf(k)).toBeGreaterThanOrEqual(0);
+          count += 1;
+        }
+        expect(count).toBe(1);
       });
 
       it('Should check alphabet', () => {
@@ -820,7 +836,7 @@ describe('TrieSet', () => {
 
     describe('ToArrayThatMatch convertor', () => {
       it('Should return empty array for empty trie', () => {
-        const t = new TrieSet('eng');
+        const t = new TrieSet(eng);
         const arr1 = t.toArrayThatMatch('a');
         expect(arr1).toEqual([]);
 

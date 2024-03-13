@@ -527,7 +527,7 @@ describe('TrieMap', () => {
     describe('Simple iterators', () => {
       describe('Keys iterator', () => {
         it('Should return empty keys iterator for empty trie', () => {
-          const t = new TrieMap('eng');
+          const t = new TrieMap(eng);
           const keys = t.keys();
           const next = keys.next();
 
@@ -575,7 +575,7 @@ describe('TrieMap', () => {
 
       describe('Values iterator', () => {
         it('Should return empty values iterator for empty trie', () => {
-          const t = new TrieMap('eng');
+          const t = new TrieMap(eng);
           const values = t.values();
           const next = values.next();
 
@@ -623,7 +623,7 @@ describe('TrieMap', () => {
 
       describe('Entries iterator', () => {
         it('Should return empty entries iterator for empty trie', () => {
-          const t = new TrieMap('eng');
+          const t = new TrieMap(eng);
           const entries = t.entries();
           const next = entries.next();
 
@@ -684,7 +684,7 @@ describe('TrieMap', () => {
   describe('Prefix iterators', () => {
     describe('KeysWithPrefix iterator', () => {
       it('Should return empty keys iterator for empty trie', () => {
-        const t = new TrieMap('eng');
+        const t = new TrieMap(eng);
         const keys = t.keysWithPrefix('a');
         const next = keys.next();
 
@@ -743,7 +743,7 @@ describe('TrieMap', () => {
 
     describe('ValuesWithPrefix iterator', () => {
       it('Should return empty values iterator for empty trie', () => {
-        const t = new TrieMap('eng');
+        const t = new TrieMap(eng);
         const values = t.valuesWithPrefix('a');
         const next = values.next();
 
@@ -803,7 +803,7 @@ describe('TrieMap', () => {
 
     describe('EntriesWithPrefix iterator', () => {
       it('Should return empty entries iterator for empty trie', () => {
-        const t = new TrieMap('eng');
+        const t = new TrieMap(eng);
         const entries = t.entriesWithPrefix('d');
         const next = entries.next();
 
@@ -873,7 +873,7 @@ describe('TrieMap', () => {
   describe('Match iterators', () => {
     describe('KeysThatMatch iterator', () => {
       it('Should return empty keys iterator for empty trie', () => {
-        const t = new TrieMap('eng');
+        const t = new TrieMap(eng);
         const keys1 = t.keysThatMatch('a');
         const next1 = keys1.next();
 
@@ -979,6 +979,22 @@ describe('TrieMap', () => {
         expect(count).toBe(2);
       });
 
+      it('Should return all keys (1 key) - 5', () => {
+        const t = new TrieMap(eng);
+
+        t.add('abcd', 1);
+        t.add('zbcdf', 1);
+        t.add('zbcdo', 1);
+
+        const arr = ['abcd'];
+        let count = 0;
+        for (const k of t.keysThatMatch('?bcd')) {
+          expect(arr.indexOf(k)).toBeGreaterThanOrEqual(0);
+          count += 1;
+        }
+        expect(count).toBe(1);
+      });
+
       it('Should check alphabet', () => {
         const t = new TrieMap(eng);
         const ktm = () => t.keysThatMatch('ab@c', '?');
@@ -1033,7 +1049,7 @@ describe('TrieMap', () => {
 
     describe('ValuesThatMatch iterator', () => {
       it('Should return empty values iterator for empty trie', () => {
-        const t = new TrieMap<number>('eng');
+        const t = new TrieMap<number>(eng);
         const values1 = t.valuesThatMatch('a');
         const next1 = values1.next();
 
@@ -1139,6 +1155,22 @@ describe('TrieMap', () => {
         expect(count).toBe(2);
       });
 
+      it('Should return all values (1 key) - 5', () => {
+        const t = new TrieMap<number>(eng);
+
+        t.add('abcd', 1);
+        t.add('zbcq', 2);
+        t.add('zbck', 2);
+
+        const arr = [1, 2];
+        let count = 0;
+        for (const k of t.valuesThatMatch('?bcd')) {
+          expect(arr.indexOf(k)).toBeGreaterThanOrEqual(0);
+          count += 1;
+        }
+        expect(count).toBe(1);
+      });
+
       it('Should check alphabet', () => {
         const t = new TrieMap(eng);
         const vtm = () => t.valuesThatMatch('ab@c', '?');
@@ -1193,7 +1225,7 @@ describe('TrieMap', () => {
 
     describe('EntriesThatMatch iterator', () => {
       it('Should return empty entries iterator for empty trie', () => {
-        const t = new TrieMap<number>('eng');
+        const t = new TrieMap<number>(eng);
         const entries1 = t.entriesThatMatch('a');
         const next1 = entries1.next();
 
@@ -1304,6 +1336,24 @@ describe('TrieMap', () => {
           count += 1;
         }
         expect(count).toBe(2);
+      });
+
+      it('Should return all values (1 key) - 5', () => {
+        const t = new TrieMap<number>(eng);
+
+        t.add('abcd', 1);
+        t.add('zbcdj', 2);
+        t.add('zbcds', 3);
+
+        const arr = [['abcd', 1]];
+        let count = 0;
+        for (const k of t.entriesThatMatch('?bcd')) {
+          const found = arr.find(item => item[0] === k[0]);
+          expect(found[0]).toBe(k[0]);
+          expect(found[1]).toBe(k[1]);
+          count += 1;
+        }
+        expect(count).toBe(1);
       });
 
       it('Should check alphabet', () => {
@@ -1426,7 +1476,7 @@ describe('TrieMap', () => {
 
     describe('ToArrayThatMatch convertor', () => {
       it('Should return empty array for empty trie', () => {
-        const t = new TrieMap<number>('eng');
+        const t = new TrieMap<number>(eng);
         const arr1 = t.toArrayThatMatch('a');
         expect(arr1).toEqual([]);
 
