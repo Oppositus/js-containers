@@ -109,6 +109,9 @@ export class TrieMap<T> implements PrefixTreeMap<string, T> {
     if (!key) {
       throw new TypeError('Key is empty');
     }
+    if (value == null) { // no null and  undefined
+      throw new TypeError('Value is empty');
+    }
     this.root = this.innerAdd(this.root, key, 0, value);
     return this.siz;
   }
