@@ -1,3 +1,8 @@
+/**
+ * Based on Java Algorithms and Clients https://algs4.cs.princeton.edu/code/
+ * https://algs4.cs.princeton.edu/code/edu/princeton/cs/algs4/TrieSET.java.html
+ */
+
 import { PrefixTreeSet } from './prefix-tree-set.interface';
 
 interface ArrayTrieSetNode {
