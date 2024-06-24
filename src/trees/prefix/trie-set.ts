@@ -3,8 +3,6 @@
  * https://algs4.cs.princeton.edu/code/edu/princeton/cs/algs4/TrieSET.java.html
  */
 
-import { PrefixTreeSet } from './prefix-tree-set.interface';
-
 interface ArrayTrieSetNode {
   next: ArrayTrieSetNode[];
   isString: boolean;
@@ -20,7 +18,7 @@ interface IteratorState {
   wildcard: string;
 }
 
-export class TrieSet implements PrefixTreeSet<string> {
+export class TrieSet {
   private static maxAlphabetLength = 128;
 
   private root: ArrayTrieSetNode | undefined = undefined;
@@ -32,7 +30,7 @@ export class TrieSet implements PrefixTreeSet<string> {
 
   private readonly arrayTemplate: ArrayTrieSetNode[];
 
-  private iteratorState: IteratorState = null;
+  private iteratorState: IteratorState | null = null;
 
   //#region Construction
 

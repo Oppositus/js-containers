@@ -3,31 +3,56 @@
  * https://algs4.cs.princeton.edu/code/edu/princeton/cs/algs4/RedBlackBST.java.html
  */
 
-import { BinaryTree } from './binary-tree.interface';
-import { BstNode } from './bst-node.interface';
-
-interface RBTreeNode<K, V> extends BstNode<K, V, RBTreeNode<K, V>> {
+interface RBTreeNode<K, V> {
+  key: K;
+  value: V;
+  left: RBTreeNode<K, V> | null;
+  right: RBTreeNode<K, V> | null;
   isRed: boolean;
   size: number;
 }
 
-export class RedBlackTree<K, V> implements BinaryTree<K, V> {
-  private root: RBTreeNode<K, V> | null = null;
+interface IteratorState<K, V> {
+  parents: [RBTreeNode<K, V>, boolean][];
+  center: boolean;
+}
 
+export class RedBlackTree<K, V> {
+  private root: RBTreeNode<K, V> | null = null;
+  private iteratorState: IteratorState<K, V> | null = null;
+
+  /**
+   * Number of elemnts in the tree
+   */
   get size(): number {
-    return this.root ? this.root.size : 0;
+    return this.root?.size ?? 0;
   }
 
+  /**
+   * True if tree is empty (there is no elements in the tree)
+   */
   get empty(): boolean {
     return !this.root;
   }
 
+  /**
+   * Remove all elements from the tree
+   * 
+   * @returns Number of removed elements (size of the tree before clearing it)
+   */
   clear(): number {
     const size = this.size;
     this.root = null;
     return size;
   }
 
+  /**
+   * Delete element with specific key from the tree
+   * 
+   * @param key Key to delete
+   * @returns true if element was deleted, false if there is no such element
+   * @throws TypeError if key is not specified
+   */
   delete(key: K): boolean {
     if (key == null) { // null or undefined keys are not allowed
       throw new TypeError('Key is empty');
@@ -49,14 +74,18 @@ export class RedBlackTree<K, V> implements BinaryTree<K, V> {
     }
   }
 
-  deleteMin(): number {
+  /**
+   * Delete element with minimal key from the tree
+   */
+  deleteMin(): void {
     if (!this.root) {
-      return 0;
+      return;
     }
 
     // if both children of root are black, set root to red
-    if (!this.root.left?.isRed && !this.root.right?.isRed)
+    if (!this.root.left?.isRed && !this.root.right?.isRed) {
       this.root.isRed = true;
+    }
 
     this.root = this.innerDeleteMin(this.root);
 
@@ -65,9 +94,12 @@ export class RedBlackTree<K, V> implements BinaryTree<K, V> {
     }
   }
 
-  deleteMax(): number {
+  /**
+   * Delete element with maximal key from the tree
+   */
+  deleteMax(): void {
     if (!this.root) {
-      return 0;
+      return;
     }
 
     // if both children of root are black, set root to red
@@ -81,10 +113,24 @@ export class RedBlackTree<K, V> implements BinaryTree<K, V> {
     }
   }
 
+  /**
+   * Check that the tree contains element with given key
+   * 
+   * @param key Key to check
+   * @returns true if the tree has element with given key
+   */
   has(key: K): boolean {
     return this.get(key) !== undefined;
   }
 
+  /**
+   * Add element to the tree. If the tree contains element with given key it's value is changed
+   * 
+   * @param key Key to add (or modify if the tree contains such key)
+   * @param value Value to associate with the key
+   * @returns Size of the tree after adding the element
+   * @throws TypeError if key is not specified or value is not specified
+   */
   add(key: K, value: V): number {
     if (key == null) { // null or undefined keys are not allowed
       throw new TypeError('Key is empty');
@@ -99,15 +145,26 @@ export class RedBlackTree<K, V> implements BinaryTree<K, V> {
     return this.root.size;
   }
 
+  /**
+   * Get value associaited with given key
+   * 
+   * @param key Key to get from the tree
+   * @returns Value assiciated with the key or undefined if the tree does not contains the key
+   * @throws TypeError if key is not specified
+   */
   get(key: K): V | undefined {
     if (key == null) { // null or undefined keys are not allowed
       throw new TypeError('Key is empty');
     }
 
-    const node = this.innerGet(this.root, key);
-    return node?.value;
+    return this.innerGet(this.root, key)?.value;
   }
 
+  /**
+   * Get maximal element of the tree
+   * 
+   * @returns [Key, Value] pair of maximal element or undefined if the tree is empty
+   */
   max(): [K, V] | undefined {
     const node = this.innerMinMax(this.root, 'right');
     if (node) {
@@ -116,6 +173,11 @@ export class RedBlackTree<K, V> implements BinaryTree<K, V> {
     return undefined;
   }
 
+  /**
+   * Get minimal element of the tree
+   * 
+   * @returns [Key, Value] pair of minimal element or undefined if the tree is empty
+   */
   min(): [K, V] | undefined {
     const node = this.innerMinMax(this.root, 'left');
     if (node) {
@@ -124,10 +186,19 @@ export class RedBlackTree<K, V> implements BinaryTree<K, V> {
     return undefined;
   }
 
+  /**
+   * Height of the tree
+   * 
+   * @returns Height of the tree
+   */
   height(): number {
     return this.innerHeight(this.root);
   }
 
+  /**
+   * Returns the largest key in the tree less than or equal to key
+   * @throws TypeError if key is not specified
+   */
   floor(key: K): [K, V] | undefined {
     if (key == null) { // null or undefined keys are not allowed
       throw new TypeError('Key is empty');
@@ -140,6 +211,10 @@ export class RedBlackTree<K, V> implements BinaryTree<K, V> {
     return node ? [node.key, node.value] : undefined;
   }
 
+  /**
+   * Returns the smallest key in the tree greater than or equal to key
+   * @throws TypeError if key is not specified
+   */
   ceil(key: K): [K, V] | undefined {
     if (key == null) { // null or undefined keys are not allowed
       throw new TypeError('Key is empty');
@@ -151,6 +226,12 @@ export class RedBlackTree<K, V> implements BinaryTree<K, V> {
     return node ? [node.key, node.value] : undefined;
   }
 
+  /**
+   * Return the key in the tree of a given rank.
+   * This key has the property that there are rank keys in
+   * the tree that are smaller. In other words, this key is the
+   * (rank + 1)st smallest key in the tree.
+   */
   select(rank: number): [K, V] | undefined {
     if (rank < 0 || rank > this.size) {
       return undefined;
@@ -159,6 +240,10 @@ export class RedBlackTree<K, V> implements BinaryTree<K, V> {
     return node ? [node.key, node.value] : undefined;
   }
 
+  /**
+   * Return the number of keys in the tree strictly less than key.
+   * @throws TypeError if key is not specified
+   */
   rank(key: K): number {
     if (key == null) { // null or undefined keys are not allowed
       throw new TypeError('Key is empty');
@@ -166,6 +251,15 @@ export class RedBlackTree<K, V> implements BinaryTree<K, V> {
     return this.innerRank(this.root, key);
   }
 
+  /**
+   * Returns the number of keys in the tree in the given range.
+   * If from > to returns 0
+   * 
+   * @param from Minimal value of the key
+   * @param to Maximal value of the key
+   * @returns Number of keys in range from..to
+   * @throws TypeError if from is not specified or to is not specified
+   */
   sizeOfRange(from: K, to: K): number {
     if (from == null) { // null or undefined keys are not allowed
       throw new TypeError('Key from is empty');
@@ -184,36 +278,184 @@ export class RedBlackTree<K, V> implements BinaryTree<K, V> {
     }
   }
 
+  /**
+   * Iterator for [Key, Value] pairs of the tree. Result is sorted by Key from min to max
+   * 
+   * @returns Iterable iterator that can be used in for-of cicle
+   */
   entries(): IterableIterator<[K, V]> {
-    return undefined;
+    const iterator = this.innerTraverse();
+
+    return {
+      [Symbol.iterator]() {
+        return this;
+      },
+
+      next(): IteratorResult<[K, V], [K, V]> {
+        const entrie = iterator.next();
+
+        return {
+          value: entrie.value,
+          done: entrie.done
+        }
+      }
+    }; 
   }
 
+  /**
+   * Iterator for Keys of the tree. Result is sorted by Key from min to max
+   * 
+   * @returns Iterable iterator that can be used in for-of cicle
+   */
   keys(): IterableIterator<K> {
-    return undefined;
+    const iterator = this.innerTraverse();
+
+    return {
+      [Symbol.iterator]() {
+        return this;
+      },
+
+      next(): IteratorResult<K, K> {
+        const entrie = iterator.next();
+
+        return {
+          value: entrie.value?.[0],
+          done: entrie.done
+        }
+      }
+    };
   }
 
+  /**
+   * Iterator for Values of the tree. Result is sorted by Key from min to max
+   * 
+   * @returns Iterable iterator that can be used in for-of cicle
+   */
   values(): IterableIterator<V> {
-    return undefined;
+    const iterator = this.innerTraverse();
+
+    return {
+      [Symbol.iterator]() {
+        return this;
+      },
+
+      next(): IteratorResult<V, V> {
+        const entrie = iterator.next();
+
+        return {
+          value: entrie.value?.[1],
+          done: entrie.done
+        }
+      }
+    };
   }
 
-  toArray(): V[] {
-    return [];
+  /**
+   * Convert the tree to array. Each array element contains array of [Key, Value] pair.
+   * Result is sorted by Key from min to max
+   * 
+   * @returns Array of [Key, Value] pairs
+   */
+  toArray(): [K, V][] {
+    const iterator = this.innerTraverse();
+    return Array.from({
+      [Symbol.iterator]() { return iterator; }
+    });
   }
 
+  /**
+   * Iterator for [Key, Value] pairs in the Key range from..to (including).
+   * Result is sorted by Key from min to max
+   * 
+   * @param from Minimal value of the key (including)
+   * @param to Maximal value of the key (including)
+   * @returns Iterable iterator that can be used in for-of cicle
+   */
   entriesInRange(from: K, to: K): IterableIterator<[K, V]> {
-    return undefined;
+    const iterator = this.innerTraverse(from, to);
+
+    return {
+      [Symbol.iterator]() {
+        return this;
+      },
+
+      next(): IteratorResult<[K, V], [K, V]> {
+        const entrie = iterator.next();
+
+        return {
+          value: entrie.value,
+          done: entrie.done
+        }
+      }
+    };
   }
 
+  /**
+   * Iterator for Keys in the Key range from..to (including).
+   * Result is sorted by Key from min to max
+   * 
+   * @param from Minimal value of the key (including)
+   * @param to Maximal value of the key (including)
+   * @returns Iterable iterator that can be used in for-of cicle
+   */
   keysInRange(from: K, to: K): IterableIterator<K> {
-    return undefined;
+    const iterator = this.innerTraverse(from, to);
+
+    return {
+      [Symbol.iterator]() {
+        return this;
+      },
+
+      next(): IteratorResult<K, K> {
+        const entrie = iterator.next();
+
+        return {
+          value: entrie.value?.[0],
+          done: entrie.done
+        }
+      }
+    };
   }
 
-  valuesInRange(from: K, to: V): IterableIterator<V> {
-    return undefined;
+  /**
+   * Iterator for Values in the Key range from..to (including).
+   * Result is sorted by Key from min to max
+   * 
+   * @param from Minimal value of the key (including)
+   * @param to Maximal value of the key (including)
+   * @returns Iterable iterator that can be used in for-of cicle
+   */
+  valuesInRange(from: K, to: K): IterableIterator<V> {
+    const iterator = this.innerTraverse(from, to);
+
+    return {
+      [Symbol.iterator]() {
+        return this;
+      },
+
+      next(): IteratorResult<V, V> {
+        const entrie = iterator.next();
+
+        return {
+          value: entrie.value?.[1],
+          done: entrie.done
+        }
+      }
+    };
   }
 
-  toArrayInRange(from: K, to: V): V[] {
-    return [];
+  /**
+   * Convert the tree to array using from..to range (including)
+   * Each array element contains array of [Key, Value] pair.
+   * Result is sorted by Key from min to max
+   * 
+   * @returns Array of [Key, Value] pairs
+   */
+  toArrayInRange(from: K, to: K): [K, V][] {
+    const iterator = this.innerTraverse(from, to);
+    return Array.from({
+      [Symbol.iterator]() { return iterator; }
+    });
   }
 
   private innerGet(node: RBTreeNode<K, V>, key: K): RBTreeNode<K, V> | null {
@@ -452,5 +694,97 @@ export class RedBlackTree<K, V> implements BinaryTree<K, V> {
     } else {
       return node.left?.size ?? 0;
     }
+  }
+
+  private innerTraverse(min?: K, max?: K): Iterator<[K, V], [K, V]> {
+    this.iteratorState = {
+      parents: [[this.root, false]],
+      center: false
+    };
+
+    return {
+      next: (): IteratorResult<[K, V], [K, V]> => {
+        const entrie = this.findNextNode(min, max);
+        return {
+          value: entrie,
+          done: !entrie
+        }
+      }
+    };    
+  }
+
+  private findNextNode(min?: K, max?: K): [K, V] | undefined {
+    if (this.iteratorState.parents.length === 0) {
+      return undefined;
+    }
+
+    // node - current node to process
+    // left - flag indicating is left sub-tree of the node is processed
+    let [node, left] = this.iteratorState.parents.pop();
+    
+    // Goto right if central value was returned
+    if (this.iteratorState.center) {
+      if (node.right) {  
+        node = node.right;
+        left = false;
+        if (!node.left) {
+          this.iteratorState.center = false;
+          if (max !== undefined && node.key <= max) {
+            return [node.key, node.value];
+          } else {
+            return undefined; // key > max so we are finished
+          }
+        }
+      } else {
+        if (this.iteratorState.parents.length === 0) {
+          return undefined;
+        }
+        // Keep node in stack for later use
+        node = this.iteratorState.parents[this.iteratorState.parents.length - 1][0];
+        // Keep this.iteratorState.center true
+        if (max !== undefined && node.key <= max) {
+          return node ? [node.key, node.value] : undefined;
+        } else {
+          return undefined; // key > max so we are finished
+        }
+      }
+    }
+
+    // left sub-tree was processed but not the node itself
+    if (node && left && !this.iteratorState.center) {
+      if (max !== undefined && node.key > max) {
+        return undefined; // key > max so we are finished
+      }
+      this.iteratorState.center = true;
+      this.iteratorState.parents.push([node, true]);
+      return [node.key, node.value];
+    }
+
+    // Go up until first unprocessed left sub-tree
+    while (node && left) {
+      [node, left] = this.iteratorState.parents.pop();
+    }
+
+    // Sink to left sub-tree
+    while (node.left) {
+      if (min !== undefined && node.key < min) {
+        node = node.right; // if key < min then go to right subtree
+      } else {
+        // store node and continue to sink left sub-tree
+        this.iteratorState.parents.push([node, true]);
+        node = node.left;
+      }
+    }
+
+    if (min !== undefined && node.key < min) {
+      node = this.iteratorState.parents.pop()[0]; // go 1 step up
+    }
+    if (max !== undefined && node.key > max) {
+      return undefined; // // key > max so we are finished
+    }
+
+    this.iteratorState.center = true;
+    this.iteratorState.parents.push([node, true]);
+    return [node.key, node.value];
   }
 }

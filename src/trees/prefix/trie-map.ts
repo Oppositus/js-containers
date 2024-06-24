@@ -3,8 +3,6 @@
  * https://algs4.cs.princeton.edu/code/edu/princeton/cs/algs4/TrieST.java.html
  */
 
-import { PrefixTreeMap } from './prefix-tree-map.interface';
-
 interface ArrayTrieMapNode<T> {
   next: ArrayTrieMapNode<T>[];
   value?: T;
@@ -20,7 +18,7 @@ interface IteratorState<T> {
   wildcard: string;
 }
 
-export class TrieMap<T> implements PrefixTreeMap<string, T> {
+export class TrieMap<T> {
   private static maxAlphabetLength = 128;
 
   private root: ArrayTrieMapNode<T> | undefined = undefined;
@@ -32,7 +30,7 @@ export class TrieMap<T> implements PrefixTreeMap<string, T> {
 
   private readonly arrayTemplate: ArrayTrieMapNode<T>[];
 
-  private iteratorState: IteratorState<T> = null;
+  private iteratorState: IteratorState<T> | null = null;
 
   //#region Construction
 
