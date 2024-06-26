@@ -107,10 +107,59 @@ describe('Red-Black tree', () => {
     });
 
     describe('Has', () => {
+      it('Should not has element in empty tree', () => {
+        const rbt = new RedBlackTree<number, number>();
+        expect(rbt.has(0)).toBeFalsy();
+      });
 
+      it('Should not has element if it not added', () => {
+        const rbt = new RedBlackTree<number, number>();
+        rbt.add(1, 10);
+        rbt.add(2, 10);
+        rbt.add(3, 10);
+        rbt.add(4, 10);
+        rbt.add(5, 10);
+
+        expect(rbt.has(10)).toBeFalsy();
+      });
+
+      it('Should has element if it is added', () => {
+        const rbt = new RedBlackTree<number, number>();
+        rbt.add(1, 10);
+        rbt.add(2, 10);
+        rbt.add(3, 10);
+        rbt.add(4, 10);
+        rbt.add(5, 10);
+
+        expect(rbt.has(1)).toBeTruthy();
+        expect(rbt.has(2)).toBeTruthy();
+        expect(rbt.has(3)).toBeTruthy();
+        expect(rbt.has(4)).toBeTruthy();
+        expect(rbt.has(5)).toBeTruthy();
+      });
     });
 
     describe('Add', () => {
+      it('Should add element to the tree', () => {
+        const rbt = new RedBlackTree<number, number>();
+
+        rbt.add(10, 11);
+
+        expect(rbt.size).toBe(1);
+        expect(rbt.empty).toBeFalsy();
+        expect(rbt.get(10)).toBe(11);
+      });
+
+      it('Should replace value of element if it exists in the tree', () => {
+        const rbt = new RedBlackTree<number, number>();
+
+        rbt.add(10, 11);
+        rbt.add(10, 12);
+
+        expect(rbt.size).toBe(1);
+        expect(rbt.empty).toBeFalsy();
+        expect(rbt.get(10)).toBe(12);
+      })
 
     });
 

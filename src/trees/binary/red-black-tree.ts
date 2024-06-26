@@ -8,8 +8,19 @@ interface RBTreeNode<K, V> {
   value: V;
   left: RBTreeNode<K, V> | null;
   right: RBTreeNode<K, V> | null;
-  isRed: boolean;
-  size: number;
+  /**
+   * Use MSB to store "red" flag. Use other bits to store size.
+   * 
+   * To get red flag:                  Boolean(sizeAndRed & MASK)
+   * To set red flag:                  sizeAndRed |= MASK
+   * To reset red flag:                sizeAndRed &= MASK_NOT
+   * To switch red flag:               sizeAndRed ^= MASK
+   * To copy red flag from other node: node.sizeAndRed = (other.sizeAndRed & MASK) | (node.sizeAndRed & MASK_NOT)
+   * 
+   * To get size: sizeAndRed & MASK_NOT
+   * To set size: sizeAndRed = (sizeAndRed & MASK) | newSize
+   */
+  sizeAndRed: number;
 }
 
 interface IteratorState<K, V> {
@@ -17,19 +28,26 @@ interface IteratorState<K, V> {
   center: boolean;
 }
 
+const MASK = 1 << Number.MAX_SAFE_INTEGER.toString(2).length;
+const MASK_NOT = ~MASK;
+
 export class RedBlackTree<K, V> {
   private root: RBTreeNode<K, V> | null = null;
   private iteratorState: IteratorState<K, V> | null = null;
 
   /**
    * Number of elemnts in the tree
+   * 
+   * @returns Number of elemnts in the tree
    */
   get size(): number {
-    return this.root?.size ?? 0;
+    return (this.root?.sizeAndRed ?? 0) & MASK_NOT;
   }
 
   /**
-   * True if tree is empty (there is no elements in the tree)
+   * True if tree is empty (there are no elements in the tree)
+   * 
+   * @returns true if tree is empty
    */
   get empty(): boolean {
     return !this.root;
@@ -63,14 +81,14 @@ export class RedBlackTree<K, V> {
     }
 
     // if both children of root are black, set root to red
-    if (!this.root.left?.isRed && !this.root.right?.isRed) {
-      this.root.isRed = true;
+    if (!((this.root.left?.sizeAndRed ?? 0) & MASK) && !((this.root.right?.sizeAndRed ?? 0) & MASK)) {
+      this.root.sizeAndRed |= MASK;
     }
 
     this.root = this.innerDelete(this.root, key);
 
     if (this.root) {
-      this.root.isRed = false;
+      this.root.sizeAndRed &= MASK_NOT;
     }
   }
 
@@ -83,14 +101,14 @@ export class RedBlackTree<K, V> {
     }
 
     // if both children of root are black, set root to red
-    if (!this.root.left?.isRed && !this.root.right?.isRed) {
-      this.root.isRed = true;
+    if (!((this.root.left?.sizeAndRed ?? 0) & MASK) && !((this.root.right?.sizeAndRed ?? 0) & MASK)) {
+      this.root.sizeAndRed |= MASK;
     }
 
     this.root = this.innerDeleteMin(this.root);
 
     if (this.root) {
-      this.root.isRed = false;
+      this.root.sizeAndRed &= MASK_NOT;
     }
   }
 
@@ -103,13 +121,14 @@ export class RedBlackTree<K, V> {
     }
 
     // if both children of root are black, set root to red
-    if (!this.root.left?.isRed && !this.root.right?.isRed) {
-      this.root.isRed = true;
+    if (!((this.root.left?.sizeAndRed ?? 0) & MASK) && !((this.root.right?.sizeAndRed ?? 0) & MASK)) {
+      this.root.sizeAndRed |= MASK;
     }
 
     this.root = this.innerDeleteMax(this.root);
+
     if (this.root) {
-      this.root.isRed = false;
+      this.root.sizeAndRed &= MASK_NOT;
     }
   }
 
@@ -135,14 +154,14 @@ export class RedBlackTree<K, V> {
     if (key == null) { // null or undefined keys are not allowed
       throw new TypeError('Key is empty');
     }
-    if (value == null) { // no null and  undefined
+    if (value == null) { // no null and undefined
       throw new TypeError('Value is empty');
     }
 
     this.root = this.innerAdd(this.root, key, value);
-    this.root.isRed = false;
+    this.root.sizeAndRed &= MASK_NOT;
 
-    return this.root.size;
+    return this.root.sizeAndRed & MASK_NOT;
   }
 
   /**
@@ -167,10 +186,7 @@ export class RedBlackTree<K, V> {
    */
   max(): [K, V] | undefined {
     const node = this.innerMinMax(this.root, 'right');
-    if (node) {
-      return [node.key, node.value];
-    }
-    return undefined;
+    return node ? [node.key, node.value] : undefined;
   }
 
   /**
@@ -180,10 +196,7 @@ export class RedBlackTree<K, V> {
    */
   min(): [K, V] | undefined {
     const node = this.innerMinMax(this.root, 'left');
-    if (node) {
-      return [node.key, node.value];
-    }
-    return undefined;
+    return node ? [node.key, node.value] : undefined;
   }
 
   /**
@@ -196,7 +209,9 @@ export class RedBlackTree<K, V> {
   }
 
   /**
-   * Returns the largest key in the tree less than or equal to key
+   * Returns the largest key in the tree less than or equal to the given key
+   * 
+   * @returns [Key, Value] of found node or undefined
    * @throws TypeError if key is not specified
    */
   floor(key: K): [K, V] | undefined {
@@ -212,7 +227,9 @@ export class RedBlackTree<K, V> {
   }
 
   /**
-   * Returns the smallest key in the tree greater than or equal to key
+   * Returns the smallest key in the tree greater than or equal to the given key
+   * 
+   * @returns [Key, Value] of found node or undefined
    * @throws TypeError if key is not specified
    */
   ceil(key: K): [K, V] | undefined {
@@ -231,6 +248,8 @@ export class RedBlackTree<K, V> {
    * This key has the property that there are rank keys in
    * the tree that are smaller. In other words, this key is the
    * (rank + 1)st smallest key in the tree.
+   * 
+   * @returns [Key, Value] of found node or undefined
    */
   select(rank: number): [K, V] | undefined {
     if (rank < 0 || rank > this.size) {
@@ -242,6 +261,8 @@ export class RedBlackTree<K, V> {
 
   /**
    * Return the number of keys in the tree strictly less than key.
+   * 
+   * @returns number of keys in the tree strictly less than key.
    * @throws TypeError if key is not specified
    */
   rank(key: K): number {
@@ -280,8 +301,9 @@ export class RedBlackTree<K, V> {
 
   /**
    * Iterator for [Key, Value] pairs of the tree. Result is sorted by Key from min to max
+   * If tree is modified during iterating result of iteration is unspecified
    * 
-   * @returns Iterable iterator that can be used in for-of cicle
+   * @returns Iterable iterator that can be used in for-of cycle etc.
    */
   entries(): IterableIterator<[K, V]> {
     const iterator = this.innerTraverse();
@@ -304,8 +326,9 @@ export class RedBlackTree<K, V> {
 
   /**
    * Iterator for Keys of the tree. Result is sorted by Key from min to max
+   * If tree is modified during iterating result of iteration is unspecified
    * 
-   * @returns Iterable iterator that can be used in for-of cicle
+   * @returns Iterable iterator that can be used in for-of cycle etc.
    */
   keys(): IterableIterator<K> {
     const iterator = this.innerTraverse();
@@ -328,8 +351,9 @@ export class RedBlackTree<K, V> {
 
   /**
    * Iterator for Values of the tree. Result is sorted by Key from min to max
+   * If tree is modified during iterating result of iteration is unspecified
    * 
-   * @returns Iterable iterator that can be used in for-of cicle
+   * @returns Iterable iterator that can be used in for-of cycle etc.
    */
   values(): IterableIterator<V> {
     const iterator = this.innerTraverse();
@@ -366,10 +390,11 @@ export class RedBlackTree<K, V> {
   /**
    * Iterator for [Key, Value] pairs in the Key range from..to (including).
    * Result is sorted by Key from min to max
+   * If tree is modified during iterating result of iteration is unspecified
    * 
    * @param from Minimal value of the key (including)
    * @param to Maximal value of the key (including)
-   * @returns Iterable iterator that can be used in for-of cicle
+   * @returns Iterable iterator that can be used in for-of cycle etc.
    */
   entriesInRange(from: K, to: K): IterableIterator<[K, V]> {
     const iterator = this.innerTraverse(from, to);
@@ -393,10 +418,11 @@ export class RedBlackTree<K, V> {
   /**
    * Iterator for Keys in the Key range from..to (including).
    * Result is sorted by Key from min to max
+   * If tree is modified during iterating result of iteration is unspecified
    * 
    * @param from Minimal value of the key (including)
    * @param to Maximal value of the key (including)
-   * @returns Iterable iterator that can be used in for-of cicle
+   * @returns Iterable iterator that can be used in for-of cycle etc.
    */
   keysInRange(from: K, to: K): IterableIterator<K> {
     const iterator = this.innerTraverse(from, to);
@@ -420,10 +446,11 @@ export class RedBlackTree<K, V> {
   /**
    * Iterator for Values in the Key range from..to (including).
    * Result is sorted by Key from min to max
+   * If tree is modified during iterating result of iteration is unspecified
    * 
    * @param from Minimal value of the key (including)
    * @param to Maximal value of the key (including)
-   * @returns Iterable iterator that can be used in for-of cicle
+   * @returns Iterable iterator that can be used in for-of cycle etc
    */
   valuesInRange(from: K, to: K): IterableIterator<V> {
     const iterator = this.innerTraverse(from, to);
@@ -470,7 +497,7 @@ export class RedBlackTree<K, V> {
     return null;
   }
 
-  private innerMinMax(node: RBTreeNode<K, V>, direction: 'left' | 'right'): RBTreeNode<K, V> {
+  private innerMinMax(node: RBTreeNode<K, V>, direction: 'left' | 'right'): RBTreeNode<K, V> | null {
     if (!node) {
       return null;
     }
@@ -484,7 +511,7 @@ export class RedBlackTree<K, V> {
 
   private innerAdd(node: RBTreeNode<K, V>, key: K, value: V): RBTreeNode<K, V> {
     if (!node) {
-      return {key, value, left: null, right: null, isRed: true, size: 1};
+      return {key, value, left: null, right: null, sizeAndRed: MASK | 1};
     }
 
     if (key === node.key) {
@@ -496,17 +523,18 @@ export class RedBlackTree<K, V> {
     }
 
     // fix-up any right-leaning links
-    if (node.right?.isRed && !node.left?.isRed) {
+    if (((node.right?.sizeAndRed ?? 0) & MASK) && !((node.left?.sizeAndRed ?? 0) & MASK)) {
       node = this.rotateLeft(node);
     }
-    if (node.left?.isRed && node.left?.left?.isRed) {
+    if (((node.left?.sizeAndRed ?? 0) & MASK) && ((node.left?.left?.sizeAndRed ?? 0) & MASK)) {
       node = this.rotateRight(node);
     }
-    if (node.left?.isRed && node.right?.isRed) {
+    if (((node.left?.sizeAndRed ?? 0) & MASK) && ((node.right?.sizeAndRed ?? 0) & MASK)) {
       this.flipColors(node);
     }
 
-    node.size = (node.left?.size ?? 0) + (node.right?.size ?? 0) + 1;
+    node.sizeAndRed = (node.sizeAndRed & MASK) |
+      (((node.left?.sizeAndRed ?? 0) & MASK_NOT) + ((node.right?.sizeAndRed ?? 0) & MASK_NOT) + 1);
 
     return node;
   }
@@ -515,10 +543,9 @@ export class RedBlackTree<K, V> {
     const n = node.right;
     node.right = n.left;
     n.left = node;
-    n.isRed = node.isRed;
-    node.isRed = true;
-    n.size = node.size;
-    node.size = (node.left?.size ?? 0) + (node.right?.size ?? 0) + 1;
+    n.sizeAndRed = node.sizeAndRed;
+    node.sizeAndRed = MASK | // node always marked as red
+      (((node.left?.sizeAndRed ?? 0) & MASK_NOT) + ((node.right?.sizeAndRed ?? 0) & MASK_NOT) + 1);
     return n;
   }
 
@@ -526,24 +553,23 @@ export class RedBlackTree<K, V> {
     const n = node.left;
     node.left = n.right;
     n.right = node;
-    n.isRed = node.isRed;
-    node.isRed = true;
-    n.size = node.size;
-    node.size = (node.left?.size ?? 0) + (node.right?.size ?? 0) + 1;
+    n.sizeAndRed = node.sizeAndRed;
+    node.sizeAndRed = MASK | // node always marked as red
+      (((node.left?.sizeAndRed ?? 0) & MASK_NOT) + ((node.right?.sizeAndRed ?? 0) & MASK_NOT) + 1);
     return n;
   }
 
   private flipColors(node: RBTreeNode<K, V>): void {
-    node.isRed = !node.isRed;
-    node.left.isRed = !node.left.isRed;
-    node.right.isRed = !node.right.isRed;
+    node.sizeAndRed ^= MASK;
+    node.left.sizeAndRed ^= MASK;
+    node.right.sizeAndRed ^= MASK;
   }
 
-  private innerDeleteMin(node: RBTreeNode<K, V>): RBTreeNode<K, V> {
+  private innerDeleteMin(node: RBTreeNode<K, V>): RBTreeNode<K, V> | null {
     if (!node.left)
       return null;
 
-    if (!node.left?.isRed && !node.left?.left?.isRed) {
+    if (!((node.left?.sizeAndRed ?? 0) & MASK) && !((node.left?.left?.sizeAndRed ?? 0) & MASK)) {
       node = this.moveRedLeft(node);
     }
 
@@ -551,8 +577,8 @@ export class RedBlackTree<K, V> {
     return this.balance(node);
   }
 
-  private innerDeleteMax(node: RBTreeNode<K, V>): RBTreeNode<K, V> {
-    if (node.left?.isRed) {
+  private innerDeleteMax(node: RBTreeNode<K, V>): RBTreeNode<K, V> | null {
+    if ((node.left?.sizeAndRed ?? 0) & MASK) {
       node = this.rotateRight(node);
     }
 
@@ -560,7 +586,7 @@ export class RedBlackTree<K, V> {
       return null;
     }
 
-    if (!node.right?.isRed && !node.right?.left?.isRed) {
+    if (!((node.right?.sizeAndRed ?? 0) & MASK) && !((node.right?.left?.sizeAndRed ?? 0) & MASK)) {
       node = this.moveRedRight(node);
     }
 
@@ -568,20 +594,20 @@ export class RedBlackTree<K, V> {
     return this.balance(node);
   }
 
-  private innerDelete(node: RBTreeNode<K, V>, key: K): RBTreeNode<K, V> {
+  private innerDelete(node: RBTreeNode<K, V>, key: K): RBTreeNode<K, V> | null {
     if (key < node.key) {
-      if (!node.left?.isRed && !node.left?.left?.isRed) {
+      if (!((node.left?.sizeAndRed ?? 0) & MASK) && !((node.left?.left?.sizeAndRed ?? 0) & MASK)) {
         node = this.moveRedLeft(node);
       }
       node.left = this.innerDelete(node.left, key);
     } else {
-      if (node.left?.isRed) {
+      if ((node.left?.sizeAndRed ?? 0) & MASK) {
         node = this.rotateRight(node);
       }
       if (key === node.key && !node.right) {
         return null;
       }
-      if (!node.right?.isRed && !node.right?.left?.isRed) {
+      if (!((node.right?.sizeAndRed ?? 0) & MASK) && !((node.right?.left?.sizeAndRed ?? 0) & MASK)) {
         node = this.moveRedRight(node);
       }
       if (key === node.key) {
@@ -599,7 +625,7 @@ export class RedBlackTree<K, V> {
 
   private moveRedLeft(node: RBTreeNode<K, V>): RBTreeNode<K, V> {
     this.flipColors(node);
-    if (node.right?.left?.isRed) {
+    if ((node.right?.left?.sizeAndRed ?? 0) & MASK) {
       node.right = this.rotateRight(node.right);
       node = this.rotateLeft(node);
       this.flipColors(node);
@@ -609,7 +635,7 @@ export class RedBlackTree<K, V> {
 
   private moveRedRight(node: RBTreeNode<K, V>): RBTreeNode<K, V> {
     this.flipColors(node);
-    if (node.left?.left?.isRed) {
+    if ((node.left?.left?.sizeAndRed ?? 0) & MASK) {
       node = this.rotateRight(node);
       this.flipColors(node);
     }
@@ -617,17 +643,18 @@ export class RedBlackTree<K, V> {
   }
 
   private balance(node: RBTreeNode<K, V>): RBTreeNode<K, V> {
-    if (node.right?.isRed && !node.left?.isRed) {
+    if (((node.right?.sizeAndRed ?? 0) & MASK) && !((node.left?.sizeAndRed ?? 0) & MASK)) {
       node = this.rotateLeft(node);
     }
-    if (node.left?.isRed && node.left?.left?.isRed) {
+    if (((node.left?.sizeAndRed ?? 0) & MASK) && ((node.left?.left?.sizeAndRed ?? 0) & MASK)) {
       node = this.rotateRight(node);
     }
-    if (node.left?.isRed && node.right?.isRed) {
+    if (((node.left?.sizeAndRed ?? 0) & MASK) && ((node.right?.sizeAndRed ?? 0) & MASK)) {
       this.flipColors(node);
     }
 
-    node.size = (node.left?.size ?? 0) + (node.right?.size ?? 0) + 1;
+    node.sizeAndRed = (node.sizeAndRed & MASK) |
+      (((node.left?.sizeAndRed ?? 0) & MASK_NOT) + ((node.right?.sizeAndRed ?? 0) & MASK_NOT) + 1);
     return node;
   }
 
@@ -635,10 +662,11 @@ export class RedBlackTree<K, V> {
     if (!node) {
       return -1;
     }
+    // fixme - too expensive!
     return 1 + Math.max(this.innerHeight(node.left), this.innerHeight(node.right));
   }
 
-  private innerFloor(node: RBTreeNode<K, V>, key: K): RBTreeNode<K, V> {
+  private innerFloor(node: RBTreeNode<K, V>, key: K): RBTreeNode<K, V> | null {
     if (!node) {
       return null;
     }
@@ -654,7 +682,7 @@ export class RedBlackTree<K, V> {
     return n ?? node;
   }
 
-  private innerCeil(node: RBTreeNode<K, V>, key: K): RBTreeNode<K, V> {
+  private innerCeil(node: RBTreeNode<K, V>, key: K): RBTreeNode<K, V> | null {
     if (!node) {
       return null;
     }
@@ -668,11 +696,11 @@ export class RedBlackTree<K, V> {
     return n ?? node;
   }
 
-  private innerSelect(node: RBTreeNode<K, V>, rank: number): RBTreeNode<K, V> {
+  private innerSelect(node: RBTreeNode<K, V>, rank: number): RBTreeNode<K, V> | null {
     if (!node) {
       return null;
     }
-    const leftSize = node.left?.size ?? 0;
+    const leftSize = (node.left?.sizeAndRed ?? 0) & MASK_NOT;
     if (leftSize > rank) {
       return this.innerSelect(node.left, rank);
     } else if (leftSize < rank) {
@@ -690,9 +718,9 @@ export class RedBlackTree<K, V> {
     if (key < node.key) {
       return this.innerRank(node.left, key);
     } else if (key > node.key) {
-      return 1 + (node.left?.size ?? 0) + this.innerRank(node.right, key);
+      return 1 + ((node.left?.sizeAndRed ?? 0) & MASK_NOT) + this.innerRank(node.right, key);
     } else {
-      return node.left?.size ?? 0;
+      return (node.left?.sizeAndRed ?? 0) & MASK_NOT;
     }
   }
 
@@ -719,20 +747,20 @@ export class RedBlackTree<K, V> {
     }
 
     // node - current node to process
-    // left - flag indicating is left sub-tree of the node is processed
+    // left - flag indicating is the left sub-tree of the node is processed
     let [node, left] = this.iteratorState.parents.pop();
     
-    // Goto right if central value was returned
+    // Goto right if node's value was returned
     if (this.iteratorState.center) {
       if (node.right) {  
         node = node.right;
         left = false;
         if (!node.left) {
           this.iteratorState.center = false;
-          if (max !== undefined && node.key <= max) {
-            return [node.key, node.value];
+          if (max !== undefined) {
+            return node.key <= max ? [node.key, node.value] : undefined;
           } else {
-            return undefined; // key > max so we are finished
+            return [node.key, node.value];
           }
         }
       } else {
@@ -742,10 +770,10 @@ export class RedBlackTree<K, V> {
         // Keep node in stack for later use
         node = this.iteratorState.parents[this.iteratorState.parents.length - 1][0];
         // Keep this.iteratorState.center true
-        if (max !== undefined && node.key <= max) {
-          return node ? [node.key, node.value] : undefined;
+        if (max !== undefined) {
+          return node ? (node.key <= max ? [node.key, node.value] : undefined) : undefined;
         } else {
-          return undefined; // key > max so we are finished
+          return node ? [node.key, node.value] : undefined;
         }
       }
     }
@@ -777,7 +805,7 @@ export class RedBlackTree<K, V> {
     }
 
     if (min !== undefined && node.key < min) {
-      node = this.iteratorState.parents.pop()[0]; // go 1 step up
+      node = this.iteratorState.parents.pop()[0]; // go 1 level up due to sink method
     }
     if (max !== undefined && node.key > max) {
       return undefined; // // key > max so we are finished
