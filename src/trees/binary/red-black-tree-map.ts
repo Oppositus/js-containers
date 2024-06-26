@@ -36,7 +36,13 @@ interface IteratorState<K, V> {
 const MASK = 1 << 31;
 const MASK_NOT = ~MASK;
 
-export class RedBlackTree<K, V> {
+/**
+ * Red-Black Tree Map.
+ * 
+ * Each Key has assotiated Value
+ * Value must not be null nor undefined
+ */
+export class RedBlackTreeMap<K, V> {
   private root: RBTreeNode<K, V> | null = null;
   private iteratorState: IteratorState<K, V> | null = null;
 
@@ -95,14 +101,16 @@ export class RedBlackTree<K, V> {
     if (this.root) {
       this.root.sizeAndRed &= MASK_NOT;
     }
+
+    return true;
   }
 
   /**
    * Delete element with minimal key from the tree
    */
-  deleteMin(): void {
+  deleteMin(): boolean {
     if (!this.root) {
-      return;
+      return false;
     }
 
     // if both children of root are black, set root to red
@@ -115,14 +123,16 @@ export class RedBlackTree<K, V> {
     if (this.root) {
       this.root.sizeAndRed &= MASK_NOT;
     }
+
+    return true;
   }
 
   /**
    * Delete element with maximal key from the tree
    */
-  deleteMax(): void {
+  deleteMax(): boolean {
     if (!this.root) {
-      return;
+      return false;
     }
 
     // if both children of root are black, set root to red
@@ -135,6 +145,8 @@ export class RedBlackTree<K, V> {
     if (this.root) {
       this.root.sizeAndRed &= MASK_NOT;
     }
+
+    return true;
   }
 
   /**
@@ -254,10 +266,13 @@ export class RedBlackTree<K, V> {
    * the tree that are smaller. In other words, this key is the
    * (rank + 1)st smallest key in the tree.
    * 
+   * Rank of smallest key is 0
+   * Rank of largest key is (size - 1)
+   * 
    * @returns [Key, Value] of found node or undefined
    */
   select(rank: number): [K, V] | undefined {
-    if (rank < 0 || rank > this.size) {
+    if (rank < 0 || rank >= this.size) {
       return undefined;
     }
     const node = this.innerSelect(this.root, rank);
@@ -730,6 +745,17 @@ export class RedBlackTree<K, V> {
   }
 
   private innerTraverse(min?: K, max?: K): Iterator<[K, V], [K, V]> {
+    if (!this.root || min > max) {
+      return {
+        next: (): IteratorResult<[K, V], [K, V]> => {
+          return {
+            value: undefined,
+            done: true
+          }
+        }
+      };  
+    }
+
     this.iteratorState = {
       parents: [[this.root, false]],
       center: false
