@@ -41,6 +41,32 @@ const MASK_NOT = ~MASK;
  * Contains Keys only
  */
 export class RedBlackTreeSet<K> {
+
+  /**
+   * Create RBTree from array or iterable with keys
+   * 
+   * @param from Array, ArrayLike or Iterable to create from
+   * @returns RBTree
+   * @throws TypeError if from is not iterable 
+   */
+  public static from<K>(from: ArrayLike<K> | Iterable<K>): RedBlackTreeSet<K> {
+    if ('length' in from) {
+      const rbt = new RedBlackTreeSet<K>();
+      for (let i = 0, l = from.length; i < l; ++i) {
+        rbt.add(from[i]);
+      }
+      return rbt;
+    } else if (Symbol.iterator in from) {
+      const rbt = new RedBlackTreeSet<K>();
+      for (const k of from) {
+        rbt.add(k);
+      }
+      return rbt;
+    } else {
+      throw new TypeError('Non-iterable argument');
+    }
+  }
+
   private root: RBTreeNode<K> | null = null;
   private iteratorState: IteratorState<K> | null = null;
 

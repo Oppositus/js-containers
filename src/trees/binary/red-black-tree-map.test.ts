@@ -9,6 +9,73 @@ describe('Red-Black tree', () => {
       expect(rbt.empty).toBeTruthy();
       expect(rbt['root']).toBeNull();
     });
+
+    it('Should create empty RBT from []', () => {
+      const rbt = RedBlackTreeMap.from<number, number>([]);
+
+      expect(rbt.size).toBe(0);
+      expect(rbt.empty).toBeTruthy();
+      expect(rbt['root']).toBeNull();
+    });
+
+    it('Should create empty RBT from empty iterable', () => {
+      const iterable: Iterable<[number, number]> = {
+        [Symbol.iterator]() {
+          return {
+            next: (): IteratorReturnResult<[number, number]> => {
+              return {
+                value: [0, 0],
+                done: true
+              }
+            }
+          } as Iterator<[number, number], [number, number]>
+        }
+      }
+      const rbt = RedBlackTreeMap.from<number, number>(iterable);
+
+      expect(rbt.size).toBe(0);
+      expect(rbt.empty).toBeTruthy();
+      expect(rbt['root']).toBeNull();
+    });
+
+    it('Should create RBT from array', () => {
+      const rbt = RedBlackTreeMap.from<number, number>([[1, 1], [2, 2], [3, 3], [4, 4], [5, 5]]);
+
+      expect(rbt.size).toBe(5);
+      expect(rbt.empty).toBeFalsy();
+      expect(rbt.get(1)).toBe(1);
+      expect(rbt.get(2)).toBe(2);
+      expect(rbt.get(3)).toBe(3);
+      expect(rbt.get(4)).toBe(4);
+      expect(rbt.get(5)).toBe(5);
+    });
+
+    it('Should create RBT from iterable', () => {
+      const iterable: Iterable<[number, number]> = {
+        [Symbol.iterator]() {
+          return {
+            value: 1,
+            next: function (): IteratorResult<[number, number], [number, number]> {
+              const value = this.value
+              this.value += 1;
+              return {
+                value: [value, value],
+                done: value > 5
+              };
+            }
+          } as Iterator<[number, number], [number, number]>
+        }
+      }
+      const rbt = RedBlackTreeMap.from<number, number>(iterable);
+
+      expect(rbt.size).toBe(5);
+      expect(rbt.empty).toBeFalsy();
+      expect(rbt.get(1)).toBe(1);
+      expect(rbt.get(2)).toBe(2);
+      expect(rbt.get(3)).toBe(3);
+      expect(rbt.get(4)).toBe(4);
+      expect(rbt.get(5)).toBe(5);
+    });
   });
 
   describe('Tree implementation', () => {

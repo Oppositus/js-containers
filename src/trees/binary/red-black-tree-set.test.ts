@@ -9,6 +9,74 @@ describe('Red-Black tree', () => {
       expect(rbt.empty).toBeTruthy();
       expect(rbt['root']).toBeNull();
     });
+
+    it('Should create empty RBT from []', () => {
+      const rbt = RedBlackTreeSet.from<number>([]);
+
+      expect(rbt.size).toBe(0);
+      expect(rbt.empty).toBeTruthy();
+      expect(rbt['root']).toBeNull();
+    });
+
+    it('Should create empty RBT from empty iterable', () => {
+      const iterable: Iterable<number> = {
+        [Symbol.iterator]() {
+          return {
+            next: (): IteratorReturnResult<number> => {
+              return {
+                value: 0,
+                done: true
+              }
+            }
+          } as Iterator<number, number>
+        }
+      }
+      const rbt = RedBlackTreeSet.from<number>(iterable);
+
+      expect(rbt.size).toBe(0);
+      expect(rbt.empty).toBeTruthy();
+      expect(rbt['root']).toBeNull();
+    });
+
+    it('Should create RBT from array', () => {
+      const rbt = RedBlackTreeSet.from<number>([1, 2, 3, 4, 5]);
+
+      expect(rbt.size).toBe(5);
+      expect(rbt.empty).toBeFalsy();
+      expect(rbt.has(1)).toBeTruthy();
+      expect(rbt.has(2)).toBeTruthy();
+      expect(rbt.has(3)).toBeTruthy();
+      expect(rbt.has(4)).toBeTruthy();
+      expect(rbt.has(5)).toBeTruthy();
+    });
+
+    it('Should create RBT from iterable', () => {
+      const iterable: Iterable<number> = {
+        [Symbol.iterator]() {
+          return {
+            value: 1,
+            next: function (): IteratorResult<number, number> {
+              const value = this.value
+              this.value += 1;
+              return {
+                value,
+                done: value > 5
+              };
+            }
+          } as Iterator<number, number>
+        }
+      }
+      const rbt = RedBlackTreeSet.from<number>(iterable);
+
+      expect(rbt.size).toBe(5);
+      expect(rbt.empty).toBeFalsy();
+      expect(rbt.has(1)).toBeTruthy();
+      expect(rbt.has(2)).toBeTruthy();
+      expect(rbt.has(3)).toBeTruthy();
+      expect(rbt.has(4)).toBeTruthy();
+      expect(rbt.has(5)).toBeTruthy();
+    });
+
   });
 
   describe('Tree implementation', () => {
