@@ -10,6 +10,7 @@ interface RBTreeNode<K, V> {
   right: RBTreeNode<K, V> | null;
   /**
    * Use MSB to store "red" flag. Use other bits to store size.
+   * Due to bitwise operations and JS engine size is limited to 2**31 = 2_147_483_648 nodes
    * 
    * To get red flag:                  Boolean(sizeAndRed & MASK)
    * To set red flag:                  sizeAndRed |= MASK
@@ -28,7 +29,11 @@ interface IteratorState<K, V> {
   center: boolean;
 }
 
-const MASK = 1 << Number.MAX_SAFE_INTEGER.toString(2).length;
+/**
+ * Bitwise operations for numbers in JS use 32-bit number represintation
+ * So limit size to 2**31 = 2_147_483_648 nodes
+ */
+const MASK = 1 << 31;
 const MASK_NOT = ~MASK;
 
 export class RedBlackTree<K, V> {
