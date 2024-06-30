@@ -12,7 +12,7 @@
   },
   "homepage": "https://github.com/Oppositus/js-containers",
   "engines": {
-    "node": "lts/iron"
+    "node": "v20.15.0"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
